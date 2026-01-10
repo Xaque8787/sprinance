@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from app.auth.jwt_handler import get_current_admin_user, get_password_hash
 from app.utils.slugify import create_slug, ensure_unique_slug
+from app.utils.backup import create_backup, list_backups, delete_backup, get_backup_path
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -17,9 +18,10 @@ async def admin_page(
     current_user: User = Depends(get_current_admin_user)
 ):
     users = db.query(User).all()
+    backups = list_backups()
     return templates.TemplateResponse(
         "admin/users.html",
-        {"request": request, "users": users, "current_user": current_user}
+        {"request": request, "users": users, "backups": backups, "current_user": current_user}
     )
 
 @router.get("/admin/users/new", response_class=HTMLResponse)
@@ -112,4 +114,40 @@ async def delete_user(
 
     db.delete(user)
     db.commit()
+    return RedirectResponse(url="/admin", status_code=302)
+
+@router.post("/admin/backups/create")
+async def create_database_backup(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    try:
+        create_backup()
+        return RedirectResponse(url="/admin", status_code=302)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/admin/backups/{filename}/download")
+async def download_backup(
+    filename: str,
+    current_user: User = Depends(get_current_admin_user)
+):
+    try:
+        filepath = get_backup_path(filename)
+        return FileResponse(
+            path=filepath,
+            filename=filename,
+            media_type="application/octet-stream"
+        )
+    except (ValueError, FileNotFoundError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.post("/admin/backups/{filename}/delete")
+async def delete_database_backup(
+    filename: str,
+    current_user: User = Depends(get_current_admin_user)
+):
+    success = delete_backup(filename)
+    if not success:
+        raise HTTPException(status_code=404, detail="Backup not found")
     return RedirectResponse(url="/admin", status_code=302)
