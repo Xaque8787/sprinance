@@ -24,7 +24,7 @@
 
     <div class="detail-row">
         <strong>Position:</strong>
-        <span>{{ employee.position }}</span>
+        <span>{{ employee.position.name }}</span>
     </div>
 
     <div class="detail-row">
@@ -33,18 +33,16 @@
     </div>
 
     <div class="detail-row">
-        <strong>Bank Card Sales Required:</strong>
-        <span>{% if employee.requires_bank_card_sales %}Yes{% else %}No{% endif %}</span>
-    </div>
-
-    <div class="detail-row">
-        <strong>Cash Tips Required:</strong>
-        <span>{% if employee.requires_cash_tips %}Yes{% else %}No{% endif %}</span>
-    </div>
-
-    <div class="detail-row">
-        <strong>Total Sales Required:</strong>
-        <span>{% if employee.requires_total_sales %}Yes{% else %}No{% endif %}</span>
+        <strong>Tip Entry Requirements:</strong>
+        <span>
+            {% if employee.position.tip_requirements %}
+                {% for req in employee.position.tip_requirements %}
+                    <span class="badge">{{ req.name }}</span>
+                {% endfor %}
+            {% else %}
+                None
+            {% endif %}
+        </span>
     </div>
 </div>
 {% endblock %}

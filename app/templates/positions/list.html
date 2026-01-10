@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Positions & Tip Requirements{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header-section">
+        <h1>Position & Tip Management</h1>
+    </div>
+
+    <div class="content-section">
+        <div class="section-header">
+            <h2>Positions</h2>
+            <a href="/positions/new" class="btn btn-primary">Add New Position</a>
+        </div>
+
+        {% if positions %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Position Name</th>
+                        <th>Tip Entry Requirements</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for position in positions %}
+                    <tr>
+                        <td><strong>{{ position.name }}</strong></td>
+                        <td>
+                            {% if position.tip_requirements %}
+                                {% for req in position.tip_requirements %}
+                                    <span class="badge">{{ req.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <em>No requirements</em>
+                            {% endif %}
+                        </td>
+                        <td class="actions">
+                            <a href="/positions/{{ position.slug }}/edit" class="btn btn-sm">Edit</a>
+                            <form action="/positions/{{ position.slug }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Delete this position? Employees using this position will need to be reassigned.');">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No positions found. Add your first position above.</p>
+        {% endif %}
+    </div>
+
+    <div class="content-section" style="margin-top: 2rem;">
+        <div class="section-header">
+            <h2>Tip Entry Requirements</h2>
+            <button onclick="document.getElementById('newTipModal').style.display='block'" class="btn btn-primary">Add New Requirement</button>
+        </div>
+
+        {% if tip_requirements %}
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Requirement Name</th>
+                        <th>Field Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in tip_requirements %}
+                    <tr>
+                        <td><strong>{{ req.name }}</strong></td>
+                        <td><code>{{ req.field_name }}</code></td>
+                        <td class="actions">
+                            <form action="/tip-requirements/{{ req.slug }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Delete this requirement? It will be removed from all positions.');">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No tip requirements found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div id="newTipModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('newTipModal').style.display='none'">&times;</span>
+        <h2>Add New Tip Requirement</h2>
+        <form action="/tip-requirements/new" method="post">
+            <div class="form-group">
+                <label for="name">Requirement Name:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="field_name">Field Name (technical):</label>
+                <input type="text" id="field_name" name="field_name" required placeholder="e.g., bank_card_sales">
+                <small>Use lowercase with underscores (snake_case)</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Requirement</button>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 2rem;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    margin: 0.25rem;
+    background: #e3f2fd;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

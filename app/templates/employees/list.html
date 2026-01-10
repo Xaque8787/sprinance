@@ -22,7 +22,7 @@
             {% for employee in employees %}
             <tr>
                 <td><a href="/employees/{{ employee.slug }}">{{ employee.name }}</a></td>
-                <td>{{ employee.position }}</td>
+                <td>{{ employee.position.name }}</td>
                 <td>{{ employee.scheduled_days|join(', ') if employee.scheduled_days else 'None' }}</td>
                 <td>
                     <a href="/employees/{{ employee.slug }}/edit" class="btn btn-small">Edit</a>

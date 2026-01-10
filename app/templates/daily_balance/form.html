@@ -66,7 +66,7 @@
                            class="employee-toggle"
                            data-employee-id="{{ emp.id }}"
                            {% if emp in working_employees %}checked{% endif %}>
-                    {{ emp.name }} ({{ emp.position }})
+                    {{ emp.name }} ({{ emp.position.name }})
                 </label>
                 {% endfor %}
             </div>
@@ -76,55 +76,31 @@
         <div id="employee-entries">
             {% for emp in working_employees %}
             <div class="employee-entry" id="entry-{{ emp.id }}" data-employee-id="{{ emp.id }}">
-                <h4>{{ emp.name }} - {{ emp.position }}</h4>
+                <h4>{{ emp.name }} - {{ emp.position.name }}</h4>
 
                 <div class="form-row">
-                    {% if emp.requires_bank_card_sales %}
-                    <div class="form-group">
-                        <label>Bank Card Sales</label>
-                        <input type="number" step="0.01" name="bank_card_sales_{{ emp.id }}"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).bank_card_sales }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized %}readonly{% endif %}>
-                    </div>
-                    {% endif %}
-
-                    <div class="form-group">
-                        <label>Bank Card Tips</label>
-                        <input type="number" step="0.01" name="bank_card_tips_{{ emp.id }}"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).bank_card_tips }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized %}readonly{% endif %}>
-                    </div>
-
-                    {% if emp.requires_cash_tips %}
-                    <div class="form-group">
-                        <label>Cash Tips</label>
-                        <input type="number" step="0.01" name="cash_tips_{{ emp.id }}"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).cash_tips }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized %}readonly{% endif %}>
-                    </div>
-                    {% endif %}
-
-                    {% if emp.requires_total_sales %}
-                    <div class="form-group">
-                        <label>Total Sales</label>
-                        <input type="number" step="0.01" name="total_sales_{{ emp.id }}"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).total_sales }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized %}readonly{% endif %}>
-                    </div>
-                    {% endif %}
+                    {% for req in emp.position.tip_requirements %}
+                        {% if req.field_name != 'no_tips' %}
+                        <div class="form-group">
+                            <label>{{ req.name }}</label>
+                            {% if req.field_name == 'calculated_take_home' %}
+                            <input type="number" step="0.01" readonly
+                                   value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).calculated_take_home }}{% else %}0.00{% endif %}"
+                                   class="calculated-field">
+                            {% else %}
+                            <input type="number" step="0.01" name="{{ req.field_name }}_{{ emp.id }}"
+                                   value="{% if employee_entries.get(emp.id) and hasattr(employee_entries.get(emp.id), req.field_name) %}{{ getattr(employee_entries.get(emp.id), req.field_name) }}{% else %}0.00{% endif %}"
+                                   {% if daily_balance and daily_balance.finalized %}readonly{% endif %}>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
 
                     <div class="form-group">
                         <label>Adjustments</label>
                         <input type="number" step="0.01" name="adjustments_{{ emp.id }}"
                                value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).adjustments }}{% else %}0.00{% endif %}"
                                {% if daily_balance and daily_balance.finalized %}readonly{% endif %}>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Take-Home Tips</label>
-                        <input type="number" step="0.01" readonly
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).calculated_take_home }}{% else %}0.00{% endif %}"
-                               class="calculated-field">
                     </div>
                 </div>
             </div>

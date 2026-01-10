@@ -16,8 +16,17 @@
         </div>
 
         <div class="form-group">
-            <label for="position">Position</label>
-            <input type="text" id="position" name="position" value="{% if employee %}{{ employee.position }}{% endif %}" required placeholder="e.g., waitstaff, bartender, kitchen">
+            <label for="position_id">Position</label>
+            <select id="position_id" name="position_id" required>
+                <option value="">Select a position...</option>
+                {% for position in positions %}
+                <option value="{{ position.id }}"
+                        {% if employee and employee.position_id == position.id %}selected{% endif %}>
+                    {{ position.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <small>Tip entry requirements are configured per position. <a href="/positions" target="_blank">Manage positions</a></small>
         </div>
 
         <div class="form-group">
@@ -31,27 +40,6 @@
                     {{ day }}
                 </label>
                 {% endfor %}
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Tip Entry Requirements</label>
-            <div class="checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="requires_bank_card_sales" value="true"
-                           {% if employee and employee.requires_bank_card_sales %}checked{% endif %}>
-                    Requires Bank Card Sales
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="requires_cash_tips" value="true"
-                           {% if employee and employee.requires_cash_tips %}checked{% endif %}>
-                    Requires Cash Tips
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" name="requires_total_sales" value="true"
-                           {% if employee and employee.requires_total_sales %}checked{% endif %}>
-                    Requires Total Sales
-                </label>
             </div>
         </div>
 

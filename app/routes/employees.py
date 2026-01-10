@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
-from app.models import User, Employee
+from app.models import User, Employee, Position
 from app.auth.jwt_handler import get_current_user
 from app.utils.slugify import create_slug, ensure_unique_slug
 
@@ -29,20 +29,18 @@ async def new_employee_page(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    positions = db.query(Position).all()
     return templates.TemplateResponse(
         "employees/form.html",
-        {"request": request, "employee": None, "current_user": current_user}
+        {"request": request, "employee": None, "positions": positions, "current_user": current_user}
     )
 
 @router.post("/employees/new")
 async def create_employee(
     request: Request,
     name: str = Form(...),
-    position: str = Form(...),
+    position_id: int = Form(...),
     scheduled_days: List[str] = Form([]),
-    requires_bank_card_sales: bool = Form(False),
-    requires_cash_tips: bool = Form(False),
-    requires_total_sales: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -51,11 +49,8 @@ async def create_employee(
     new_employee = Employee(
         name=name,
         slug=slug,
-        position=position,
-        scheduled_days=scheduled_days,
-        requires_bank_card_sales=requires_bank_card_sales,
-        requires_cash_tips=requires_cash_tips,
-        requires_total_sales=requires_total_sales
+        position_id=position_id,
+        scheduled_days=scheduled_days
     )
     db.add(new_employee)
     db.commit()
@@ -89,9 +84,10 @@ async def edit_employee_page(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    positions = db.query(Position).all()
     return templates.TemplateResponse(
         "employees/form.html",
-        {"request": request, "employee": employee, "current_user": current_user}
+        {"request": request, "employee": employee, "positions": positions, "current_user": current_user}
     )
 
 @router.post("/employees/{slug}/edit")
@@ -99,11 +95,8 @@ async def update_employee(
     slug: str,
     request: Request,
     name: str = Form(...),
-    position: str = Form(...),
+    position_id: int = Form(...),
     scheduled_days: List[str] = Form([]),
-    requires_bank_card_sales: bool = Form(False),
-    requires_cash_tips: bool = Form(False),
-    requires_total_sales: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -112,11 +105,8 @@ async def update_employee(
         raise HTTPException(status_code=404, detail="Employee not found")
 
     employee.name = name
-    employee.position = position
+    employee.position_id = position_id
     employee.scheduled_days = scheduled_days
-    employee.requires_bank_card_sales = requires_bank_card_sales
-    employee.requires_cash_tips = requires_cash_tips
-    employee.requires_total_sales = requires_total_sales
 
     db.commit()
     return RedirectResponse(url=f"/employees/{slug}", status_code=302)

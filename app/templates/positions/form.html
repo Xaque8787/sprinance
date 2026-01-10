@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}{% if position %}Edit{% else %}New{% endif %} Position{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="header-section">
+        <h1>{% if position %}Edit{% else %}New{% endif %} Position</h1>
+    </div>
+
+    <div class="content-section">
+        <form action="{% if position %}/positions/{{ position.slug }}/edit{% else %}/positions/new{% endif %}" method="post">
+            <div class="form-group">
+                <label for="name">Position Name:</label>
+                <input type="text" id="name" name="name" value="{{ position.name if position else '' }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Tip Entry Requirements:</label>
+                <div class="checkbox-group">
+                    {% for req in tip_requirements %}
+                    <div class="checkbox-item">
+                        <input
+                            type="checkbox"
+                            id="tip_req_{{ req.id }}"
+                            name="tip_requirement_ids"
+                            value="{{ req.id }}"
+                            {% if position and req in position.tip_requirements %}checked{% endif %}
+                        >
+                        <label for="tip_req_{{ req.id }}">{{ req.name }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">{% if position %}Update{% else %}Create{% endif %} Position</button>
+                <a href="/positions" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.checkbox-item label {
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+</style>
+{% endblock %}
