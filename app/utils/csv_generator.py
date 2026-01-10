@@ -19,12 +19,6 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         writer.writerow(["Daily Balance Report"])
         writer.writerow(["Date", daily_balance.date])
         writer.writerow(["Day of Week", daily_balance.day_of_week])
-        writer.writerow([])
-
-        writer.writerow(["Daily Financial Summary"])
-        writer.writerow(["Total Cash Sales", f"${daily_balance.total_cash_sales:.2f}"])
-        writer.writerow(["Total Card Sales", f"${daily_balance.total_card_sales:.2f}"])
-        writer.writerow(["Total Tips Collected", f"${daily_balance.total_tips_collected:.2f}"])
         if daily_balance.notes:
             writer.writerow(["Notes", daily_balance.notes])
         writer.writerow([])

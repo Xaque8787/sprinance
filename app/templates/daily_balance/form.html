@@ -204,29 +204,6 @@
             </div>
         </div>
 
-        <div class="form-row" style="margin-top: 20px;">
-            <div class="form-group">
-                <label for="total_cash_sales">Total Cash Sales</label>
-                <input type="number" step="0.01" id="total_cash_sales" name="total_cash_sales"
-                       value="{% if daily_balance %}{{ daily_balance.total_cash_sales }}{% else %}0.00{% endif %}"
-                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-            </div>
-
-            <div class="form-group">
-                <label for="total_card_sales">Total Card Sales</label>
-                <input type="number" step="0.01" id="total_card_sales" name="total_card_sales"
-                       value="{% if daily_balance %}{{ daily_balance.total_card_sales }}{% else %}0.00{% endif %}"
-                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-            </div>
-
-            <div class="form-group">
-                <label for="total_tips_collected">Total Tips Collected</label>
-                <input type="number" step="0.01" id="total_tips_collected" name="total_tips_collected"
-                       value="{% if daily_balance %}{{ daily_balance.total_tips_collected }}{% else %}0.00{% endif %}"
-                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-            </div>
-        </div>
-
         <div class="form-group">
             <label for="notes">Notes</label>
             <textarea id="notes" name="notes" rows="3"

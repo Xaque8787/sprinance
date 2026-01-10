@@ -89,9 +89,6 @@ async def daily_balance_page(
 async def save_daily_balance(
     request: Request,
     target_date: str = Form(...),
-    total_cash_sales: float = Form(0.0),
-    total_card_sales: float = Form(0.0),
-    total_tips_collected: float = Form(0.0),
     notes: str = Form(""),
     cash_drawers_beginning: float = Form(0.0),
     food_sales: float = Form(0.0),
@@ -120,9 +117,6 @@ async def save_daily_balance(
         daily_balance = DailyBalance(
             date=date_obj,
             day_of_week=day_of_week,
-            total_cash_sales=total_cash_sales,
-            total_card_sales=total_card_sales,
-            total_tips_collected=total_tips_collected,
             notes=notes,
             finalized=False,
             cash_drawers_beginning=cash_drawers_beginning,
@@ -144,9 +138,6 @@ async def save_daily_balance(
         db.add(daily_balance)
         db.flush()
     else:
-        daily_balance.total_cash_sales = total_cash_sales
-        daily_balance.total_card_sales = total_card_sales
-        daily_balance.total_tips_collected = total_tips_collected
         daily_balance.notes = notes
         daily_balance.cash_drawers_beginning = cash_drawers_beginning
         daily_balance.food_sales = food_sales
@@ -202,9 +193,6 @@ async def save_daily_balance(
 async def finalize_daily_balance(
     request: Request,
     target_date: str = Form(...),
-    total_cash_sales: float = Form(0.0),
-    total_card_sales: float = Form(0.0),
-    total_tips_collected: float = Form(0.0),
     notes: str = Form(""),
     cash_drawers_beginning: float = Form(0.0),
     food_sales: float = Form(0.0),
@@ -233,9 +221,6 @@ async def finalize_daily_balance(
         daily_balance = DailyBalance(
             date=date_obj,
             day_of_week=day_of_week,
-            total_cash_sales=total_cash_sales,
-            total_card_sales=total_card_sales,
-            total_tips_collected=total_tips_collected,
             notes=notes,
             finalized=True,
             cash_drawers_beginning=cash_drawers_beginning,
@@ -257,9 +242,6 @@ async def finalize_daily_balance(
         db.add(daily_balance)
         db.flush()
     else:
-        daily_balance.total_cash_sales = total_cash_sales
-        daily_balance.total_card_sales = total_card_sales
-        daily_balance.total_tips_collected = total_tips_collected
         daily_balance.notes = notes
         daily_balance.finalized = True
         daily_balance.cash_drawers_beginning = cash_drawers_beginning

@@ -64,9 +64,6 @@ class DailyBalance(Base):
     id = Column(Integer, primary_key=True, index=True)
     date = Column(Date, unique=True, index=True, nullable=False)
     day_of_week = Column(String, nullable=False)
-    total_cash_sales = Column(Float, default=0.0)
-    total_card_sales = Column(Float, default=0.0)
-    total_tips_collected = Column(Float, default=0.0)
     notes = Column(Text, nullable=True)
     finalized = Column(Boolean, default=False)
 

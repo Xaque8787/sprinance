@@ -32,8 +32,6 @@
                 <tr>
                     <th>Date</th>
                     <th>Day</th>
-                    <th>Total Sales</th>
-                    <th>Total Tips</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -42,8 +40,6 @@
                 <tr>
                     <td>{{ report.date.strftime('%Y-%m-%d') }}</td>
                     <td>{{ report.date.strftime('%A') }}</td>
-                    <td>${{ "%.2f"|format((report.total_cash_sales or 0) + (report.total_card_sales or 0)) }}</td>
-                    <td>${{ "%.2f"|format(report.total_tips_collected or 0) }}</td>
                     <td>
                         <button class="btn btn-primary btn-sm" onclick="editReport('{{ report.date.strftime('%Y-%m-%d') }}')">
                             Edit
