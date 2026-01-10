@@ -56,7 +56,7 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
     return filepath
 
 def generate_tip_report_csv(db: Session, start_date: date, end_date: date) -> str:
-    reports_dir = "data/reports"
+    reports_dir = "data/reports/tip_report"
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
 

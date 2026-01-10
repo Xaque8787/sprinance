@@ -199,7 +199,7 @@ async def export_tip_report(
         return RedirectResponse(url="/reports/tip-report", status_code=303)
 
     filename = generate_tip_report_csv(db, start_date_obj, end_date_obj)
-    filepath = os.path.join("data/reports", filename)
+    filepath = os.path.join("data/reports/tip_report", filename)
 
     if not os.path.exists(filepath):
         return RedirectResponse(url="/reports/tip-report", status_code=303)
