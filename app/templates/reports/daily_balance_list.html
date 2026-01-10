@@ -1,20 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Reports{% endblock %}
+{% block title %}Daily Balance Reports{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="page-header">
-        <h1>Finalized Reports</h1>
+        <div>
+            <a href="/reports" class="breadcrumb">← Back to Reports</a>
+            <h1>Daily Balance Reports</h1>
+        </div>
     </div>
 
     <div class="month-navigation">
-        <a href="/reports?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-secondary">
+        <a href="/reports/daily-balance?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-secondary">
             ← {{ prev_month.strftime('%B %Y') }}
         </a>
         <h2>{{ current_month.strftime('%B %Y') }}</h2>
         {% if not is_current_month %}
-        <a href="/reports?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-secondary">
+        <a href="/reports/daily-balance?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-secondary">
             {{ next_month.strftime('%B %Y') }} →
         </a>
         {% else %}

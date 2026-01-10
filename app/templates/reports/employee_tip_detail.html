@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.name }} - Tip Report{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <a href="/reports/tip-report" class="breadcrumb">← Back to Tip Reports</a>
+            <h1>{{ employee.name }} - {{ employee.position.name }}</h1>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <div class="month-navigation">
+            <a href="/reports/tip-report/employee/{{ employee.id }}?month={{ prev_month.strftime('%Y-%m') }}" class="btn btn-secondary">
+                ← {{ prev_month.strftime('%B %Y') }}
+            </a>
+            <h2>{{ current_month.strftime('%B %Y') }}</h2>
+            <a href="/reports/tip-report/employee/{{ employee.id }}?month={{ next_month.strftime('%Y-%m') }}" class="btn btn-secondary">
+                {{ next_month.strftime('%B %Y') }} →
+            </a>
+        </div>
+
+        <div class="custom-date-filter">
+            <h3>Or filter by custom date range:</h3>
+            <form method="GET" action="/reports/tip-report/employee/{{ employee.id }}" class="date-range-form">
+                <div class="form-group">
+                    <label for="start_date">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="end_date">End Date</label>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Apply</button>
+                {% if is_custom_range %}
+                <a href="/reports/tip-report/employee/{{ employee.id }}" class="btn btn-secondary">Clear</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="summary-cards">
+        <div class="summary-card">
+            <h3>Total Bank Card Tips</h3>
+            <p class="summary-value">${{ "%.2f"|format(total_bank_card_tips) }}</p>
+        </div>
+        <div class="summary-card">
+            <h3>Total Cash Tips</h3>
+            <p class="summary-value">${{ "%.2f"|format(total_cash_tips) }}</p>
+        </div>
+        <div class="summary-card">
+            <h3>Total Adjustments</h3>
+            <p class="summary-value">${{ "%.2f"|format(total_adjustments) }}</p>
+        </div>
+        <div class="summary-card highlight">
+            <h3>Total Take Home</h3>
+            <p class="summary-value">${{ "%.2f"|format(total_take_home) }}</p>
+        </div>
+    </div>
+
+    {% if entries %}
+    <div class="entries-list">
+        <h3>Daily Entries ({{ start_date }} to {{ end_date }})</h3>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Bank Card Sales</th>
+                    <th>Bank Card Tips</th>
+                    <th>Total Sales</th>
+                    <th>Cash Tips</th>
+                    <th>Adjustments</th>
+                    <th>Take Home</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td>{{ entry.daily_balance.date.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ entry.daily_balance.date.strftime('%A') }}</td>
+                    <td>${{ "%.2f"|format(entry.bank_card_sales or 0) }}</td>
+                    <td>${{ "%.2f"|format(entry.bank_card_tips or 0) }}</td>
+                    <td>${{ "%.2f"|format(entry.total_sales or 0) }}</td>
+                    <td>${{ "%.2f"|format(entry.cash_tips or 0) }}</td>
+                    <td>${{ "%.2f"|format(entry.adjustments or 0) }}</td>
+                    <td class="highlight-cell">${{ "%.2f"|format(entry.calculated_take_home or 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="totals-row">
+                    <td colspan="3"><strong>Totals</strong></td>
+                    <td><strong>${{ "%.2f"|format(total_bank_card_tips) }}</strong></td>
+                    <td></td>
+                    <td><strong>${{ "%.2f"|format(total_cash_tips) }}</strong></td>
+                    <td><strong>${{ "%.2f"|format(total_adjustments) }}</strong></td>
+                    <td class="highlight-cell"><strong>${{ "%.2f"|format(total_take_home) }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No entries found for this date range</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.page-header > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.breadcrumb {
+    color: #3498db;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.breadcrumb:hover {
+    text-decoration: underline;
+}
+
+.filter-section {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.month-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.month-navigation h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.custom-date-filter h3 {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: #495057;
+}
+
+.date-range-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.date-range-form .form-group {
+    flex: 1;
+    max-width: 200px;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.summary-card.highlight {
+    background: #e3f2fd;
+    border: 2px solid #3498db;
+}
+
+.summary-card h3 {
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem 0;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.entries-list {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.entries-list h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.table thead {
+    background: #f8f9fa;
+}
+
+.table th,
+.table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.table th {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.table tfoot {
+    background: #f8f9fa;
+    font-weight: bold;
+}
+
+.totals-row {
+    border-top: 2px solid #495057;
+}
+
+.highlight-cell {
+    background: #e3f2fd;
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-top: 2rem;
+}
+
+.empty-state p {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+</style>
+{% endblock %}
