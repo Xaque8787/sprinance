@@ -93,6 +93,21 @@ async def save_daily_balance(
     total_card_sales: float = Form(0.0),
     total_tips_collected: float = Form(0.0),
     notes: str = Form(""),
+    cash_drawers_beginning: float = Form(0.0),
+    food_sales: float = Form(0.0),
+    non_alcohol_beverage_sales: float = Form(0.0),
+    beer_sales: float = Form(0.0),
+    wine_sales: float = Form(0.0),
+    other_revenue: float = Form(0.0),
+    catering_sales: float = Form(0.0),
+    fundraising_contributions: float = Form(0.0),
+    sales_tax_payable: float = Form(0.0),
+    gift_certificate_sold: float = Form(0.0),
+    gift_certificate_redeemed: float = Form(0.0),
+    checking_account_cash_deposit: float = Form(0.0),
+    checking_account_bank_cards: float = Form(0.0),
+    cash_paid_out: float = Form(0.0),
+    cash_drawers_end: float = Form(0.0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -109,7 +124,22 @@ async def save_daily_balance(
             total_card_sales=total_card_sales,
             total_tips_collected=total_tips_collected,
             notes=notes,
-            finalized=False
+            finalized=False,
+            cash_drawers_beginning=cash_drawers_beginning,
+            food_sales=food_sales,
+            non_alcohol_beverage_sales=non_alcohol_beverage_sales,
+            beer_sales=beer_sales,
+            wine_sales=wine_sales,
+            other_revenue=other_revenue,
+            catering_sales=catering_sales,
+            fundraising_contributions=fundraising_contributions,
+            sales_tax_payable=sales_tax_payable,
+            gift_certificate_sold=gift_certificate_sold,
+            gift_certificate_redeemed=gift_certificate_redeemed,
+            checking_account_cash_deposit=checking_account_cash_deposit,
+            checking_account_bank_cards=checking_account_bank_cards,
+            cash_paid_out=cash_paid_out,
+            cash_drawers_end=cash_drawers_end
         )
         db.add(daily_balance)
         db.flush()
@@ -118,6 +148,21 @@ async def save_daily_balance(
         daily_balance.total_card_sales = total_card_sales
         daily_balance.total_tips_collected = total_tips_collected
         daily_balance.notes = notes
+        daily_balance.cash_drawers_beginning = cash_drawers_beginning
+        daily_balance.food_sales = food_sales
+        daily_balance.non_alcohol_beverage_sales = non_alcohol_beverage_sales
+        daily_balance.beer_sales = beer_sales
+        daily_balance.wine_sales = wine_sales
+        daily_balance.other_revenue = other_revenue
+        daily_balance.catering_sales = catering_sales
+        daily_balance.fundraising_contributions = fundraising_contributions
+        daily_balance.sales_tax_payable = sales_tax_payable
+        daily_balance.gift_certificate_sold = gift_certificate_sold
+        daily_balance.gift_certificate_redeemed = gift_certificate_redeemed
+        daily_balance.checking_account_cash_deposit = checking_account_cash_deposit
+        daily_balance.checking_account_bank_cards = checking_account_bank_cards
+        daily_balance.cash_paid_out = cash_paid_out
+        daily_balance.cash_drawers_end = cash_drawers_end
 
     form_data = await request.form()
 
@@ -161,6 +206,21 @@ async def finalize_daily_balance(
     total_card_sales: float = Form(0.0),
     total_tips_collected: float = Form(0.0),
     notes: str = Form(""),
+    cash_drawers_beginning: float = Form(0.0),
+    food_sales: float = Form(0.0),
+    non_alcohol_beverage_sales: float = Form(0.0),
+    beer_sales: float = Form(0.0),
+    wine_sales: float = Form(0.0),
+    other_revenue: float = Form(0.0),
+    catering_sales: float = Form(0.0),
+    fundraising_contributions: float = Form(0.0),
+    sales_tax_payable: float = Form(0.0),
+    gift_certificate_sold: float = Form(0.0),
+    gift_certificate_redeemed: float = Form(0.0),
+    checking_account_cash_deposit: float = Form(0.0),
+    checking_account_bank_cards: float = Form(0.0),
+    cash_paid_out: float = Form(0.0),
+    cash_drawers_end: float = Form(0.0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -177,7 +237,22 @@ async def finalize_daily_balance(
             total_card_sales=total_card_sales,
             total_tips_collected=total_tips_collected,
             notes=notes,
-            finalized=True
+            finalized=True,
+            cash_drawers_beginning=cash_drawers_beginning,
+            food_sales=food_sales,
+            non_alcohol_beverage_sales=non_alcohol_beverage_sales,
+            beer_sales=beer_sales,
+            wine_sales=wine_sales,
+            other_revenue=other_revenue,
+            catering_sales=catering_sales,
+            fundraising_contributions=fundraising_contributions,
+            sales_tax_payable=sales_tax_payable,
+            gift_certificate_sold=gift_certificate_sold,
+            gift_certificate_redeemed=gift_certificate_redeemed,
+            checking_account_cash_deposit=checking_account_cash_deposit,
+            checking_account_bank_cards=checking_account_bank_cards,
+            cash_paid_out=cash_paid_out,
+            cash_drawers_end=cash_drawers_end
         )
         db.add(daily_balance)
         db.flush()
@@ -187,6 +262,21 @@ async def finalize_daily_balance(
         daily_balance.total_tips_collected = total_tips_collected
         daily_balance.notes = notes
         daily_balance.finalized = True
+        daily_balance.cash_drawers_beginning = cash_drawers_beginning
+        daily_balance.food_sales = food_sales
+        daily_balance.non_alcohol_beverage_sales = non_alcohol_beverage_sales
+        daily_balance.beer_sales = beer_sales
+        daily_balance.wine_sales = wine_sales
+        daily_balance.other_revenue = other_revenue
+        daily_balance.catering_sales = catering_sales
+        daily_balance.fundraising_contributions = fundraising_contributions
+        daily_balance.sales_tax_payable = sales_tax_payable
+        daily_balance.gift_certificate_sold = gift_certificate_sold
+        daily_balance.gift_certificate_redeemed = gift_certificate_redeemed
+        daily_balance.checking_account_cash_deposit = checking_account_cash_deposit
+        daily_balance.checking_account_bank_cards = checking_account_bank_cards
+        daily_balance.cash_paid_out = cash_paid_out
+        daily_balance.cash_drawers_end = cash_drawers_end
 
     form_data = await request.form()
 

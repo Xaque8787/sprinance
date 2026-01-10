@@ -33,7 +33,178 @@
     <div class="form-section">
         <h3>Daily Financial Summary</h3>
 
-        <div class="form-row">
+        <div class="financial-tables-container">
+            <div class="financial-table">
+                <h4>Revenue & Income</h4>
+                <table class="summary-table">
+                    <tbody>
+                        <tr>
+                            <td><label for="cash_drawers_beginning">Cash Drawers Beginning</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="cash_drawers_beginning" name="cash_drawers_beginning"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.cash_drawers_beginning }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="food_sales">Food Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="food_sales" name="food_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.food_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="non_alcohol_beverage_sales">Non Alcohol Beverage Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="non_alcohol_beverage_sales" name="non_alcohol_beverage_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.non_alcohol_beverage_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="beer_sales">Beer Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="beer_sales" name="beer_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.beer_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="wine_sales">Wine Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="wine_sales" name="wine_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.wine_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="other_revenue">Other Revenue</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="other_revenue" name="other_revenue"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.other_revenue }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="catering_sales">Catering Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="catering_sales" name="catering_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.catering_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="fundraising_contributions">Fundraising Contributions</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="fundraising_contributions" name="fundraising_contributions"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.fundraising_contributions }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="sales_tax_payable">Sales Tax Payable</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="sales_tax_payable" name="sales_tax_payable"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.sales_tax_payable }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="gift_certificate_sold">Gift Certificate Sold</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="gift_certificate_sold" name="gift_certificate_sold"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.gift_certificate_sold }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr class="total-row">
+                            <td><strong>Total</strong></td>
+                            <td>
+                                <input type="number" step="0.01" id="table1_total" readonly class="total-field" value="0.00">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="financial-table">
+                <h4>Deposits & Expenses</h4>
+                <table class="summary-table">
+                    <tbody>
+                        <tr>
+                            <td><label for="gift_certificate_redeemed">Gift Certificate Redeemed</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="gift_certificate_redeemed" name="gift_certificate_redeemed"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.gift_certificate_redeemed }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="checking_account_cash_deposit">Checking Account Cash Deposit</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="checking_account_cash_deposit" name="checking_account_cash_deposit"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.checking_account_cash_deposit }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="checking_account_bank_cards">Checking Account Bank Cards</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="checking_account_bank_cards" name="checking_account_bank_cards"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.checking_account_bank_cards }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="cash_paid_out">Cash Paid Out</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="cash_paid_out" name="cash_paid_out"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.cash_paid_out }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="cash_drawers_end">Cash Drawers End</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="cash_drawers_end" name="cash_drawers_end"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.cash_drawers_end }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr class="total-row">
+                            <td><strong>Total</strong></td>
+                            <td>
+                                <input type="number" step="0.01" id="table2_total" readonly class="total-field" value="0.00">
+                            </td>
+                        </tr>
+                        <tr class="highlight-row">
+                            <td><strong>Cash Over/Under</strong></td>
+                            <td>
+                                <input type="number" step="0.01" id="cash_over_under" readonly class="total-field highlight-field" value="0.00">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 20px;">
             <div class="form-group">
                 <label for="total_cash_sales">Total Cash Sales</label>
                 <input type="number" step="0.01" id="total_cash_sales" name="total_cash_sales"
@@ -259,8 +430,48 @@ function removeEmployee(employeeId) {
     }
 }
 
+function calculateFinancialTotals() {
+    const table1Fields = document.querySelectorAll('.table1-field');
+    let table1Total = 0;
+
+    table1Fields.forEach(field => {
+        const value = parseFloat(field.value) || 0;
+        table1Total += value;
+    });
+
+    document.getElementById('table1_total').value = table1Total.toFixed(2);
+
+    const table2Fields = document.querySelectorAll('.table2-field');
+    let table2Total = 0;
+
+    table2Fields.forEach(field => {
+        const value = parseFloat(field.value) || 0;
+        table2Total += value;
+    });
+
+    document.getElementById('table2_total').value = table2Total.toFixed(2);
+
+    const cashOverUnder = table1Total - table2Total;
+    const cashOverUnderField = document.getElementById('cash_over_under');
+    cashOverUnderField.value = cashOverUnder.toFixed(2);
+
+    if (cashOverUnder > 0) {
+        cashOverUnderField.style.color = '#059669';
+    } else if (cashOverUnder < 0) {
+        cashOverUnderField.style.color = '#dc2626';
+    } else {
+        cashOverUnderField.style.color = '#000';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     updateAddEmployeeDropdown();
+
+    document.querySelectorAll('.table1-field, .table2-field').forEach(field => {
+        field.addEventListener('input', calculateFinancialTotals);
+    });
+
+    calculateFinancialTotals();
 });
 </script>
 {% endblock %}

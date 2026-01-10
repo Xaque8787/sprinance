@@ -70,6 +70,23 @@ class DailyBalance(Base):
     notes = Column(Text, nullable=True)
     finalized = Column(Boolean, default=False)
 
+    cash_drawers_beginning = Column(Float, default=0.0)
+    food_sales = Column(Float, default=0.0)
+    non_alcohol_beverage_sales = Column(Float, default=0.0)
+    beer_sales = Column(Float, default=0.0)
+    wine_sales = Column(Float, default=0.0)
+    other_revenue = Column(Float, default=0.0)
+    catering_sales = Column(Float, default=0.0)
+    fundraising_contributions = Column(Float, default=0.0)
+    sales_tax_payable = Column(Float, default=0.0)
+    gift_certificate_sold = Column(Float, default=0.0)
+
+    gift_certificate_redeemed = Column(Float, default=0.0)
+    checking_account_cash_deposit = Column(Float, default=0.0)
+    checking_account_bank_cards = Column(Float, default=0.0)
+    cash_paid_out = Column(Float, default=0.0)
+    cash_drawers_end = Column(Float, default=0.0)
+
     employee_entries = relationship("DailyEmployeeEntry", back_populates="daily_balance", cascade="all, delete-orphan")
 
 class DailyEmployeeEntry(Base):
