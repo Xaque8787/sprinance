@@ -35,39 +35,99 @@
 
         <div class="financial-tables-container">
             <div class="financial-table">
-                <div class="section-header">
-                    <h4>Revenue & Income</h4>
-                </div>
-                <table class="summary-table" id="revenue-table">
+                <h4>Revenue & Income</h4>
+                <table class="summary-table">
                     <tbody>
-                        {% for template in financial_templates %}
-                            {% if template.category == 'revenue' %}
-                        <tr data-template-id="{{ template.id }}">
-                            <td><label>{{ template.name }}</label></td>
+                        <tr>
+                            <td><label for="cash_drawers_beginning">Cash Drawers Beginning</label></td>
                             <td>
-                                <input type="number" step="0.01"
-                                       name="financial_item_{{ template.id }}"
+                                <input type="number" step="0.01" id="cash_drawers_beginning" name="cash_drawers_beginning"
                                        class="table1-field"
-                                       value="{% if financial_line_items.get('revenue_' + template.id|string) %}{{ financial_line_items.get('revenue_' + template.id|string).value }}{% else %}0.00{% endif %}"
+                                       value="{% if daily_balance %}{{ daily_balance.cash_drawers_beginning }}{% else %}0.00{% endif %}"
                                        {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             </td>
                         </tr>
-                            {% endif %}
-                        {% endfor %}
-                        {% if daily_balance %}
-                            {% for item in daily_balance.financial_line_items %}
-                                {% if item.is_employee_tip and item.category == 'revenue' %}
-                        <tr data-employee-tip="{{ item.employee_id }}" class="employee-tip-row">
-                            <td><label>{{ item.name }}</label></td>
+                        <tr>
+                            <td><label for="food_sales">Food Sales</label></td>
                             <td>
-                                <input type="number" step="0.01" readonly
-                                       class="table1-field calculated-field"
-                                       value="{{ item.value }}">
+                                <input type="number" step="0.01" id="food_sales" name="food_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.food_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             </td>
                         </tr>
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
+                        <tr>
+                            <td><label for="non_alcohol_beverage_sales">Non Alcohol Beverage Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="non_alcohol_beverage_sales" name="non_alcohol_beverage_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.non_alcohol_beverage_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="beer_sales">Beer Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="beer_sales" name="beer_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.beer_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="wine_sales">Wine Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="wine_sales" name="wine_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.wine_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="other_revenue">Other Revenue</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="other_revenue" name="other_revenue"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.other_revenue }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="catering_sales">Catering Sales</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="catering_sales" name="catering_sales"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.catering_sales }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="fundraising_contributions">Fundraising Contributions</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="fundraising_contributions" name="fundraising_contributions"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.fundraising_contributions }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="sales_tax_payable">Sales Tax Payable</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="sales_tax_payable" name="sales_tax_payable"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.sales_tax_payable }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="gift_certificate_sold">Gift Certificate Sold</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="gift_certificate_sold" name="gift_certificate_sold"
+                                       class="table1-field"
+                                       value="{% if daily_balance %}{{ daily_balance.gift_certificate_sold }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
                         <tr class="total-row">
                             <td><strong>Total</strong></td>
                             <td>
@@ -79,25 +139,54 @@
             </div>
 
             <div class="financial-table">
-                <div class="section-header">
-                    <h4>Deposits & Expenses</h4>
-                </div>
-                <table class="summary-table" id="expense-table">
+                <h4>Deposits & Expenses</h4>
+                <table class="summary-table">
                     <tbody>
-                        {% for template in financial_templates %}
-                            {% if template.category == 'expense' %}
-                        <tr data-template-id="{{ template.id }}">
-                            <td><label>{{ template.name }}</label></td>
+                        <tr>
+                            <td><label for="gift_certificate_redeemed">Gift Certificate Redeemed</label></td>
                             <td>
-                                <input type="number" step="0.01"
-                                       name="financial_item_{{ template.id }}"
+                                <input type="number" step="0.01" id="gift_certificate_redeemed" name="gift_certificate_redeemed"
                                        class="table2-field"
-                                       value="{% if financial_line_items.get('expense_' + template.id|string) %}{{ financial_line_items.get('expense_' + template.id|string).value }}{% else %}0.00{% endif %}"
+                                       value="{% if daily_balance %}{{ daily_balance.gift_certificate_redeemed }}{% else %}0.00{% endif %}"
                                        {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             </td>
                         </tr>
-                            {% endif %}
-                        {% endfor %}
+                        <tr>
+                            <td><label for="checking_account_cash_deposit">Checking Account Cash Deposit</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="checking_account_cash_deposit" name="checking_account_cash_deposit"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.checking_account_cash_deposit }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="checking_account_bank_cards">Checking Account Bank Cards</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="checking_account_bank_cards" name="checking_account_bank_cards"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.checking_account_bank_cards }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="cash_paid_out">Cash Paid Out</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="cash_paid_out" name="cash_paid_out"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.cash_paid_out }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><label for="cash_drawers_end">Cash Drawers End</label></td>
+                            <td>
+                                <input type="number" step="0.01" id="cash_drawers_end" name="cash_drawers_end"
+                                       class="table2-field"
+                                       value="{% if daily_balance %}{{ daily_balance.cash_drawers_end }}{% else %}0.00{% endif %}"
+                                       {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                            </td>
+                        </tr>
                         <tr class="total-row">
                             <td><strong>Total</strong></td>
                             <td>
@@ -166,32 +255,21 @@
                             {% if req.field_name == 'calculated_take_home' %}
                             <input type="number" step="0.01" readonly
                                    value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).calculated_take_home }}{% else %}0.00{% endif %}"
-                                   class="calculated-field calculated-take-home"
-                                   data-employee-id="{{ emp.id }}">
+                                   class="calculated-field">
                             {% elif req.field_name == 'bank_card_sales' %}
                             <input type="number" step="0.01" name="bank_card_sales_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
                                    value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).bank_card_sales }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% elif req.field_name == 'bank_card_tips' %}
                             <input type="number" step="0.01" name="bank_card_tips_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
-                                   data-tip-field="bank_card_tips"
                                    value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).bank_card_tips }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% elif req.field_name == 'total_sales' %}
                             <input type="number" step="0.01" name="total_sales_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
                                    value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).total_sales }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% elif req.field_name == 'cash_tips' %}
                             <input type="number" step="0.01" name="cash_tips_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
-                                   data-tip-field="cash_tips"
                                    value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).cash_tips }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% endif %}
@@ -202,20 +280,7 @@
                     <div class="form-group">
                         <label>Adjustments</label>
                         <input type="number" step="0.01" name="adjustments_{{ emp.id }}"
-                               class="tip-input"
-                               data-employee-id="{{ emp.id }}"
-                               data-tip-field="adjustments"
                                value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).adjustments }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tips on Paycheck</label>
-                        <input type="number" step="0.01" name="tips_on_paycheck_{{ emp.id }}"
-                               class="tip-input"
-                               data-employee-id="{{ emp.id }}"
-                               data-tip-field="tips_on_paycheck"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).tips_on_paycheck }}{% else %}0.00{% endif %}"
                                {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                     </div>
                 </div>
@@ -299,22 +364,14 @@ function addEmployeeEntry(emp) {
                 tipFields += `
                     <div class="form-group">
                         <label>${req.name}</label>
-                        <input type="number" step="0.01" readonly value="0.00"
-                               class="calculated-field calculated-take-home"
-                               data-employee-id="${emp.id}">
+                        <input type="number" step="0.01" readonly value="0.00" class="calculated-field">
                     </div>
                 `;
             } else {
-                const tipFieldClass = ['bank_card_tips', 'cash_tips', 'adjustments', 'tips_on_paycheck'].includes(req.field_name) ?
-                    `tip-input" data-tip-field="${req.field_name}` : 'tip-input';
                 tipFields += `
                     <div class="form-group">
                         <label>${req.name}</label>
-                        <input type="number" step="0.01"
-                               name="${req.field_name}_${emp.id}"
-                               class="${tipFieldClass}"
-                               data-employee-id="${emp.id}"
-                               value="0.00">
+                        <input type="number" step="0.01" name="${req.field_name}_${emp.id}" value="0.00">
                     </div>
                 `;
             }
@@ -333,30 +390,12 @@ function addEmployeeEntry(emp) {
             ${tipFields}
             <div class="form-group">
                 <label>Adjustments</label>
-                <input type="number" step="0.01"
-                       name="adjustments_${emp.id}"
-                       class="tip-input"
-                       data-employee-id="${emp.id}"
-                       data-tip-field="adjustments"
-                       value="0.00">
-            </div>
-            <div class="form-group">
-                <label>Tips on Paycheck</label>
-                <input type="number" step="0.01"
-                       name="tips_on_paycheck_${emp.id}"
-                       class="tip-input"
-                       data-employee-id="${emp.id}"
-                       data-tip-field="tips_on_paycheck"
-                       value="0.00">
+                <input type="number" step="0.01" name="adjustments_${emp.id}" value="0.00">
             </div>
         </div>
     `;
 
     container.appendChild(entryDiv);
-
-    attachEmployeeInputListeners(entryDiv);
-    calculateEmployeeTakeHome(emp.id);
-    updateEmployeeTipsInRevenue();
 }
 
 function removeEmployee(employeeId) {
@@ -364,75 +403,8 @@ function removeEmployee(employeeId) {
         const entry = document.getElementById(`entry-${employeeId}`);
         if (entry) {
             entry.remove();
-            updateEmployeeTipsInRevenue();
-            calculateFinancialTotals();
         }
     }
-}
-
-function calculateEmployeeTakeHome(employeeId) {
-    const bankCardTipsInput = document.querySelector(`input[name="bank_card_tips_${employeeId}"]`);
-    const cashTipsInput = document.querySelector(`input[name="cash_tips_${employeeId}"]`);
-    const adjustmentsInput = document.querySelector(`input[name="adjustments_${employeeId}"]`);
-    const tipsOnPaycheckInput = document.querySelector(`input[name="tips_on_paycheck_${employeeId}"]`);
-    const takeHomeInput = document.querySelector(`.calculated-take-home[data-employee-id="${employeeId}"]`);
-
-    if (!takeHomeInput) return;
-
-    const bankCardTips = parseFloat(bankCardTipsInput?.value || 0);
-    const cashTips = parseFloat(cashTipsInput?.value || 0);
-    const adjustments = parseFloat(adjustmentsInput?.value || 0);
-    const tipsOnPaycheck = parseFloat(tipsOnPaycheckInput?.value || 0);
-
-    const takeHome = bankCardTips + cashTips + adjustments - tipsOnPaycheck;
-    takeHomeInput.value = takeHome.toFixed(2);
-}
-
-function updateEmployeeTipsInRevenue() {
-    const revenueTable = document.querySelector('#revenue-table tbody');
-    const existingTipRows = revenueTable.querySelectorAll('.employee-tip-row');
-    existingTipRows.forEach(row => row.remove());
-
-    const employeeEntries = document.querySelectorAll('.employee-entry');
-    let insertBeforeRow = revenueTable.querySelector('.total-row');
-
-    employeeEntries.forEach(entry => {
-        const employeeId = entry.dataset.employeeId;
-        const tipsOnPaycheckInput = entry.querySelector(`input[name="tips_on_paycheck_${employeeId}"]`);
-        const tipsValue = parseFloat(tipsOnPaycheckInput?.value || 0);
-
-        if (tipsValue > 0) {
-            const employeeName = entry.querySelector('.employee-entry-header h4').textContent.split(' - ')[0];
-
-            const newRow = document.createElement('tr');
-            newRow.className = 'employee-tip-row';
-            newRow.dataset.employeeTip = employeeId;
-            newRow.innerHTML = `
-                <td><label>${employeeName} - Tips on Paycheck</label></td>
-                <td>
-                    <input type="number" step="0.01" readonly class="table1-field calculated-field" value="${tipsValue.toFixed(2)}">
-                </td>
-            `;
-
-            revenueTable.insertBefore(newRow, insertBeforeRow);
-        }
-    });
-
-    calculateFinancialTotals();
-}
-
-function attachEmployeeInputListeners(container) {
-    const inputs = container.querySelectorAll('.tip-input');
-    inputs.forEach(input => {
-        input.addEventListener('input', function() {
-            const employeeId = this.dataset.employeeId;
-            calculateEmployeeTakeHome(employeeId);
-
-            if (this.dataset.tipField === 'tips_on_paycheck') {
-                updateEmployeeTipsInRevenue();
-            }
-        });
-    });
 }
 
 function calculateFinancialTotals() {
@@ -476,16 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
         field.addEventListener('input', calculateFinancialTotals);
     });
 
-    document.querySelectorAll('.employee-entry').forEach(entry => {
-        attachEmployeeInputListeners(entry);
-    });
-
     calculateFinancialTotals();
-
-    document.querySelectorAll('.employee-entry').forEach(entry => {
-        const employeeId = entry.dataset.employeeId;
-        calculateEmployeeTakeHome(employeeId);
-    });
 });
 </script>
 {% endblock %}

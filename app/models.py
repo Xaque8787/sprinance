@@ -67,24 +67,8 @@ class DailyBalance(Base):
     notes = Column(Text, nullable=True)
     finalized = Column(Boolean, default=False)
 
-    cash_drawers_beginning = Column(Float, default=0.0)
-    food_sales = Column(Float, default=0.0)
-    non_alcohol_beverage_sales = Column(Float, default=0.0)
-    beer_sales = Column(Float, default=0.0)
-    wine_sales = Column(Float, default=0.0)
-    other_revenue = Column(Float, default=0.0)
-    catering_sales = Column(Float, default=0.0)
-    fundraising_contributions = Column(Float, default=0.0)
-    sales_tax_payable = Column(Float, default=0.0)
-    gift_certificate_sold = Column(Float, default=0.0)
-
-    gift_certificate_redeemed = Column(Float, default=0.0)
-    checking_account_cash_deposit = Column(Float, default=0.0)
-    checking_account_bank_cards = Column(Float, default=0.0)
-    cash_paid_out = Column(Float, default=0.0)
-    cash_drawers_end = Column(Float, default=0.0)
-
     employee_entries = relationship("DailyEmployeeEntry", back_populates="daily_balance", cascade="all, delete-orphan")
+    financial_line_items = relationship("DailyFinancialLineItem", back_populates="daily_balance", cascade="all, delete-orphan")
 
 class DailyEmployeeEntry(Base):
     __tablename__ = "daily_employee_entries"
@@ -98,7 +82,36 @@ class DailyEmployeeEntry(Base):
     cash_tips = Column(Float, default=0.0)
     total_sales = Column(Float, default=0.0)
     adjustments = Column(Float, default=0.0)
+    tips_on_paycheck = Column(Float, default=0.0)
     calculated_take_home = Column(Float, default=0.0)
 
     daily_balance = relationship("DailyBalance", back_populates="employee_entries")
     employee = relationship("Employee", back_populates="daily_entries")
+
+class FinancialLineItemTemplate(Base):
+    __tablename__ = "financial_line_item_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    display_order = Column(Integer, default=0)
+    is_default = Column(Boolean, default=False)
+
+    daily_line_items = relationship("DailyFinancialLineItem", back_populates="template", cascade="all, delete-orphan")
+
+class DailyFinancialLineItem(Base):
+    __tablename__ = "daily_financial_line_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    daily_balance_id = Column(Integer, ForeignKey("daily_balance.id"), nullable=False)
+    template_id = Column(Integer, ForeignKey("financial_line_item_templates.id"), nullable=True)
+    name = Column(String, nullable=False)
+    category = Column(String, nullable=False)
+    value = Column(Float, default=0.0)
+    display_order = Column(Integer, default=0)
+    is_employee_tip = Column(Boolean, default=False)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+
+    daily_balance = relationship("DailyBalance", back_populates="financial_line_items")
+    template = relationship("FinancialLineItemTemplate", back_populates="daily_line_items")
+    employee = relationship("Employee")

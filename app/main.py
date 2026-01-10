@@ -7,7 +7,7 @@ from datetime import date
 from app.database import init_db, get_db
 from app.models import User, Position, TipEntryRequirement
 from app.auth.jwt_handler import get_current_user_from_cookie
-from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports
+from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items
 from app.utils.slugify import create_slug
 
 app = FastAPI(title="Internal Management System")
@@ -23,6 +23,7 @@ app.include_router(daily_balance.router)
 app.include_router(positions.router)
 app.include_router(tip_requirements.router)
 app.include_router(reports.router)
+app.include_router(financial_items.router)
 
 def initialize_predefined_data():
     db = next(get_db())

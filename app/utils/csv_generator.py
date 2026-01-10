@@ -23,6 +23,31 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
             writer.writerow(["Notes", daily_balance.notes])
         writer.writerow([])
 
+        writer.writerow(["Financial Summary"])
+        writer.writerow([])
+
+        writer.writerow(["Revenue & Income"])
+        revenue_items = [item for item in daily_balance.financial_line_items if item.category == "revenue"]
+        revenue_total = 0
+        for item in sorted(revenue_items, key=lambda x: x.display_order):
+            writer.writerow([item.name, f"${item.value:.2f}"])
+            revenue_total += item.value
+        writer.writerow(["Total Revenue", f"${revenue_total:.2f}"])
+        writer.writerow([])
+
+        writer.writerow(["Deposits & Expenses"])
+        expense_items = [item for item in daily_balance.financial_line_items if item.category == "expense"]
+        expense_total = 0
+        for item in sorted(expense_items, key=lambda x: x.display_order):
+            writer.writerow([item.name, f"${item.value:.2f}"])
+            expense_total += item.value
+        writer.writerow(["Total Expenses", f"${expense_total:.2f}"])
+        writer.writerow([])
+
+        cash_over_under = revenue_total - expense_total
+        writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
+        writer.writerow([])
+
         writer.writerow(["Employee Breakdown"])
         writer.writerow([
             "Employee Name",
@@ -32,6 +57,7 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
             "Cash Tips",
             "Total Sales",
             "Adjustments",
+            "Tips on Paycheck",
             "Take-Home Tips"
         ])
 
@@ -44,6 +70,7 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
                 f"${entry.cash_tips:.2f}",
                 f"${entry.total_sales:.2f}",
                 f"${entry.adjustments:.2f}",
+                f"${entry.tips_on_paycheck:.2f}",
                 f"${entry.calculated_take_home:.2f}"
             ])
 
