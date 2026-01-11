@@ -67,8 +67,11 @@ project-root/
 ├── data/                               # Application data directory
 │   ├── database.db                     # SQLite database (created on first run)
 │   └── reports/                        # CSV reports directory
-│       ├── .gitkeep                    # Keeps directory in git
-│       └── YYYY-MM-DD-daily-balance.csv # Generated reports
+│       ├── daily_report/               # Daily balance reports organized by year/month
+│       │   └── {YEAR}/                 # Year directory (e.g., 2026)
+│       │       └── {MONTH}/            # Month directory (e.g., 01)
+│       │           └── YYYY-MM-DD-daily-balance.csv # Generated daily reports
+│       └── tip_report/                 # Employee tip reports
 │
 ├── .gitignore                          # Git ignore rules
 ├── requirements.txt                    # Python dependencies
@@ -230,9 +233,11 @@ http://localhost:5710
 - Portable and easy to backup
 
 ### CSV Reports
-- Location: `data/reports/`
+- Location: `data/reports/daily_report/{YEAR}/{MONTH}/`
 - One file per finalized daily balance
 - Format: `YYYY-MM-DD-daily-balance.csv`
+- Automatically organized by year and month
+- Example: `data/reports/daily_report/2026/01/2026-01-12-daily-balance.csv`
 
 ## Security Considerations
 

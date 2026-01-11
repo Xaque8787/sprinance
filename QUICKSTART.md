@@ -67,7 +67,7 @@ The application runs on **port 5710** by default.
 ## File Locations
 
 - **Database:** `data/database.db`
-- **Reports:** `data/reports/YYYY-MM-DD-daily-balance.csv`
+- **Reports:** `data/reports/daily_report/{YEAR}/{MONTH}/YYYY-MM-DD-daily-balance.csv`
 - **Configuration:** `app/auth/jwt_handler.py` (SECRET_KEY)
 
 ## Need More Help?

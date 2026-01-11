@@ -135,7 +135,9 @@ project-root/
 When you click "Generate Report (Finalize)":
 1. The daily balance is locked (marked as finalized)
 2. A CSV file is generated
-3. CSV is saved to: `data/reports/YYYY-MM-DD-daily-balance.csv`
+3. CSV is saved to: `data/reports/daily_report/{YEAR}/{MONTH}/YYYY-MM-DD-daily-balance.csv`
+   - Reports are automatically organized by year and month
+   - Example: `data/reports/daily_report/2026/01/2026-01-12-daily-balance.csv`
 4. CSV includes:
    - Date and day of week
    - Daily financial summary

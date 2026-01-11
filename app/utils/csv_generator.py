@@ -1,12 +1,22 @@
 import csv
 import os
-from datetime import date
+from datetime import date, datetime
 from typing import List
 from sqlalchemy.orm import Session
 from app.models import DailyBalance, DailyEmployeeEntry, Employee
 
 def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: List[DailyEmployeeEntry]) -> str:
-    reports_dir = "data/reports"
+    # Parse the date to get year and month
+    if isinstance(daily_balance.date, str):
+        date_obj = datetime.strptime(daily_balance.date, '%Y-%m-%d').date()
+    else:
+        date_obj = daily_balance.date
+
+    year = str(date_obj.year)
+    month = f"{date_obj.month:02d}"
+
+    # Create the directory structure: data/reports/daily_report/{year}/{month}/
+    reports_dir = os.path.join("data", "reports", "daily_report", year, month)
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
 

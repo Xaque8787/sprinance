@@ -246,8 +246,11 @@ async def export_daily_balance(
     if not daily_balance or not daily_balance.finalized:
         raise HTTPException(status_code=404, detail="Finalized report not found for this date")
 
+    # Construct the filepath using year/month directory structure
+    year = str(date_obj.year)
+    month = f"{date_obj.month:02d}"
     filename = f"{date_obj}-daily-balance.csv"
-    filepath = os.path.join("data/reports", filename)
+    filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
 
     if not os.path.exists(filepath):
         generate_daily_balance_csv(daily_balance, daily_balance.employee_entries)
