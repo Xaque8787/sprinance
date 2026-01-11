@@ -44,7 +44,7 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         writer.writerow(["Total Expenses", f"${expense_total:.2f}"])
         writer.writerow([])
 
-        cash_over_under = revenue_total - expense_total
+        cash_over_under = expense_total - revenue_total
         writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
         writer.writerow([])
 

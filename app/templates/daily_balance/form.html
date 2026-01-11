@@ -518,7 +518,7 @@ function calculateFinancialTotals() {
 
     document.getElementById('table2_total').value = table2Total.toFixed(2);
 
-    const cashOverUnder = table1Total - table2Total;
+    const cashOverUnder = table2Total - table1Total;
     const cashOverUnderField = document.getElementById('cash_over_under');
     cashOverUnderField.value = cashOverUnder.toFixed(2);
 
