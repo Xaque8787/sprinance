@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models import User, DailyBalance, Employee, DailyEmployeeEntry
 from app.auth.jwt_handler import get_current_user
 from app.utils.csv_generator import generate_tip_report_csv, generate_consolidated_daily_balance_csv
-from app.utils.csv_reader import get_saved_tip_reports, parse_tip_report_csv
+from app.utils.csv_reader import get_saved_tip_reports, parse_tip_report_csv, get_saved_daily_balance_reports
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -59,6 +59,8 @@ async def daily_balance_reports_page(
         DailyBalance.finalized == True
     ).order_by(DailyBalance.date.desc()).all()
 
+    saved_reports = get_saved_daily_balance_reports(limit=4)
+
     return templates.TemplateResponse(
         "reports/daily_balance_list.html",
         {
@@ -68,6 +70,7 @@ async def daily_balance_reports_page(
             "prev_month": prev_month,
             "next_month": next_month,
             "finalized_reports": finalized_reports,
+            "saved_reports": saved_reports,
             "is_current_month": target_date.year == date.today().year and target_date.month == date.today().month
         }
     )
@@ -92,6 +95,27 @@ async def export_consolidated_daily_balance(
 
     year = str(start_date_obj.year)
     month = f"{start_date_obj.month:02d}"
+    filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
+
+    if not os.path.exists(filepath):
+        return RedirectResponse(url="/reports/daily-balance", status_code=303)
+
+    return FileResponse(
+        path=filepath,
+        filename=filename,
+        media_type="text/csv"
+    )
+
+@router.get("/reports/daily-balance/download/{year}/{month}/{filename}")
+async def download_saved_daily_balance_report(
+    year: str,
+    month: str,
+    filename: str,
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+
     filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
 
     if not os.path.exists(filepath):
