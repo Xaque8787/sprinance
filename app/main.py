@@ -34,6 +34,9 @@ def initialize_predefined_data():
         {"name": "Total Sales", "field_name": "total_sales"},
         {"name": "Cash Tips", "field_name": "cash_tips"},
         {"name": "Take-Home Tips", "field_name": "calculated_take_home"},
+        {"name": "Adjustments", "field_name": "adjustments"},
+        {"name": "Tips on Paycheck", "field_name": "tips_on_paycheck"},
+        {"name": "Tip Out", "field_name": "tip_out"},
         {"name": "No Tips", "field_name": "no_tips"}
     ]
 
@@ -58,19 +61,23 @@ def initialize_predefined_data():
     predefined_positions = [
         {
             "name": "Waitstaff",
-            "requirements": ["Bank Card Sales", "Bank Card Tips", "Total Sales", "Cash Tips", "Take-Home Tips"]
+            "requirements": ["Bank Card Sales", "Bank Card Tips", "Total Sales", "Cash Tips", "Take-Home Tips", "Adjustments", "Tips on Paycheck", "Tip Out"]
         },
         {
             "name": "Busser",
-            "requirements": ["Cash Tips", "Take-Home Tips"]
+            "requirements": ["Take-Home Tips", "Adjustments", "Tips on Paycheck"]
         },
         {
             "name": "Host",
-            "requirements": ["No Tips"]
+            "requirements": ["Take-Home Tips", "Adjustments", "Tips on Paycheck"]
         },
         {
             "name": "Cook",
-            "requirements": ["No Tips"]
+            "requirements": ["Take-Home Tips", "Adjustments", "Tips on Paycheck", "Tip Out"]
+        },
+        {
+            "name": "Prep",
+            "requirements": ["Take-Home Tips", "Adjustments", "Tips on Paycheck"]
         }
     ]
 
@@ -82,12 +89,13 @@ def initialize_predefined_data():
                 name=pos_data["name"],
                 slug=create_slug(pos_data["name"])
             )
-
-            position.tip_requirements = [
-                requirements[req_name] for req_name in pos_data["requirements"]
-            ]
-
             db.add(position)
+        else:
+            position = existing
+
+        position.tip_requirements = [
+            requirements[req_name] for req_name in pos_data["requirements"]
+        ]
 
     db.commit()
 

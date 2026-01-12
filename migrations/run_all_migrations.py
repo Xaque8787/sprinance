@@ -21,6 +21,7 @@ import migrate_to_crud_system
 import add_crud_financial_items_migration
 import remove_old_fields_migration
 import add_tip_out_field
+import update_tip_requirements_and_positions
 
 def run_all_migrations():
     """Run all migrations in the correct order."""
@@ -30,6 +31,7 @@ def run_all_migrations():
         ("CRUD Financial Items", add_crud_financial_items_migration.migrate),
         ("Remove Old Fields", remove_old_fields_migration.migrate),
         ("Add Tip Out Field", add_tip_out_field.migrate),
+        ("Update Tip Requirements and Positions", update_tip_requirements_and_positions.migrate),
     ]
 
     print("=" * 60)

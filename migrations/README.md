@@ -29,6 +29,11 @@ Run migrations in the following order:
    - Adds `tip_out` column to `daily_employee_entries` table
    - Allows tracking tip-outs that are subtracted from take-home tips
 
+6. **update_tip_requirements_and_positions.py**
+   - Adds new tip entry requirements: Adjustments, Tips on Paycheck, Tip Out
+   - Updates all default positions with correct tip requirements
+   - Adds new "Prep" position
+
 ## Running Migrations
 
 To run a specific migration:
@@ -45,6 +50,7 @@ python3 migrations/migrate_to_crud_system.py
 python3 migrations/add_crud_financial_items_migration.py
 python3 migrations/remove_old_fields_migration.py
 python3 migrations/add_tip_out_field.py
+python3 migrations/update_tip_requirements_and_positions.py
 ```
 
 ## Notes
