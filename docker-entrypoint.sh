@@ -15,13 +15,12 @@ fi
 echo "Ensuring data directory exists..."
 mkdir -p /app/data
 
-# Check if database exists
+# Check if database exists and initialize if needed
 if [ ! -f /app/data/database.db ]; then
     echo "Database not found. Initializing with current schema..."
     python3 -c "from app.database import init_db; init_db(); print('Database initialized successfully!')"
 else
-    echo "Database exists. Running migrations to update schema..."
-    python3 /app/run_migrations.py
+    echo "Database exists."
 fi
 
 echo "=========================================="
