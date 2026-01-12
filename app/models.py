@@ -83,6 +83,7 @@ class DailyEmployeeEntry(Base):
     total_sales = Column(Float, default=0.0)
     adjustments = Column(Float, default=0.0)
     tips_on_paycheck = Column(Float, default=0.0)
+    tip_out = Column(Float, default=0.0)
     calculated_take_home = Column(Float, default=0.0)
 
     daily_balance = relationship("DailyBalance", back_populates="employee_entries")

@@ -76,8 +76,9 @@ def save_daily_balance_data(
         total_sales = float(form_data.get(f"total_sales_{emp_id}", 0.0))
         adjustments = float(form_data.get(f"adjustments_{emp_id}", 0.0))
         tips_on_paycheck = float(form_data.get(f"tips_on_paycheck_{emp_id}", 0.0))
+        tip_out = float(form_data.get(f"tip_out_{emp_id}", 0.0))
 
-        calculated_take_home = bank_card_tips + cash_tips + adjustments - tips_on_paycheck
+        calculated_take_home = bank_card_tips + cash_tips + adjustments - tips_on_paycheck - tip_out
 
         entry = DailyEmployeeEntry(
             daily_balance_id=daily_balance.id,
@@ -88,6 +89,7 @@ def save_daily_balance_data(
             total_sales=total_sales,
             adjustments=adjustments,
             tips_on_paycheck=tips_on_paycheck,
+            tip_out=tip_out,
             calculated_take_home=calculated_take_home
         )
         db.add(entry)

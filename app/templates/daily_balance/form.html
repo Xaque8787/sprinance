@@ -280,6 +280,16 @@
                                value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).tips_on_paycheck }}{% else %}0.00{% endif %}"
                                {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                     </div>
+
+                    <div class="form-group">
+                        <label>Tip Out</label>
+                        <input type="number" step="0.01" name="tip_out_{{ emp.id }}"
+                               class="tip-input"
+                               data-employee-id="{{ emp.id }}"
+                               data-tip-field="tip_out"
+                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).tip_out }}{% else %}0.00{% endif %}"
+                               {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -411,6 +421,15 @@ function addEmployeeEntry(emp) {
                        data-tip-field="tips_on_paycheck"
                        value="0.00">
             </div>
+            <div class="form-group">
+                <label>Tip Out</label>
+                <input type="number" step="0.01"
+                       name="tip_out_${emp.id}"
+                       class="tip-input"
+                       data-employee-id="${emp.id}"
+                       data-tip-field="tip_out"
+                       value="0.00">
+            </div>
         </div>
     `;
 
@@ -437,6 +456,7 @@ function calculateEmployeeTakeHome(employeeId) {
     const cashTipsInput = document.querySelector(`input[name="cash_tips_${employeeId}"]`);
     const adjustmentsInput = document.querySelector(`input[name="adjustments_${employeeId}"]`);
     const tipsOnPaycheckInput = document.querySelector(`input[name="tips_on_paycheck_${employeeId}"]`);
+    const tipOutInput = document.querySelector(`input[name="tip_out_${employeeId}"]`);
     const takeHomeInput = document.querySelector(`.calculated-take-home[data-employee-id="${employeeId}"]`);
 
     if (!takeHomeInput) return;
@@ -445,8 +465,9 @@ function calculateEmployeeTakeHome(employeeId) {
     const cashTips = parseFloat(cashTipsInput?.value || 0);
     const adjustments = parseFloat(adjustmentsInput?.value || 0);
     const tipsOnPaycheck = parseFloat(tipsOnPaycheckInput?.value || 0);
+    const tipOut = parseFloat(tipOutInput?.value || 0);
 
-    const takeHome = bankCardTips + cashTips + adjustments - tipsOnPaycheck;
+    const takeHome = bankCardTips + cashTips + adjustments - tipsOnPaycheck - tipOut;
     takeHomeInput.value = takeHome.toFixed(2);
 }
 
