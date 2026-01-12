@@ -23,6 +23,11 @@ else
     echo "Database exists."
 fi
 
+# Always run migrations to apply any new updates
+echo ""
+echo "Checking for database migrations..."
+python3 /app/run_migrations.py
+
 echo "=========================================="
 echo "Starting application..."
 echo "=========================================="
