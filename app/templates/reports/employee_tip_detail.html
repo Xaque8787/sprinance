@@ -9,6 +9,9 @@
             <a href="/reports/tip-report" class="breadcrumb">← Back to Tip Reports</a>
             <h1>{{ employee.name }} - {{ employee.position.name }}</h1>
         </div>
+        <button type="button" class="btn btn-primary" onclick="openExportModal()">
+            Export Report
+        </button>
     </div>
 
     <div class="filter-section">
@@ -109,8 +112,58 @@
     {% endif %}
 </div>
 
+<div id="export-modal" class="modal">
+    <div class="modal-content">
+        <h3>Export {{ employee.name }}'s Tip Report</h3>
+        <p>Select a date range to export a tip report for {{ employee.name }}.</p>
+
+        <div class="export-options">
+            <div class="form-group">
+                <label>
+                    <input type="radio" name="export_type" value="month" checked onchange="toggleExportType()">
+                    Export by Month
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="radio" name="export_type" value="custom" onchange="toggleExportType()">
+                    Custom Date Range
+                </label>
+            </div>
+        </div>
+
+        <div id="month-selector" class="date-selector">
+            <div class="form-group">
+                <label for="export_month">Select Month</label>
+                <input type="month" id="export_month" class="form-control" value="{{ current_month.strftime('%Y-%m') }}">
+            </div>
+        </div>
+
+        <div id="custom-selector" class="date-selector" style="display: none;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="export_start_date">Start Date</label>
+                    <input type="date" id="export_start_date" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="export_end_date">End Date</label>
+                    <input type="date" id="export_end_date" class="form-control">
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="exportReport()">Export CSV</button>
+        </div>
+    </div>
+</div>
+
 <style>
 .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
     margin-bottom: 2rem;
 }
 
@@ -269,5 +322,139 @@
     color: #6c757d;
     font-size: 1.1rem;
 }
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal.active {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.export-options {
+    margin: 1.5rem 0;
+}
+
+.export-options label {
+    display: block;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+}
+
+.export-options input[type="radio"] {
+    margin-right: 0.5rem;
+}
+
+.date-selector {
+    margin: 1.5rem 0;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
 </style>
+
+<script>
+function openExportModal() {
+    const modal = document.getElementById('export-modal');
+    modal.classList.add('active');
+}
+
+function closeExportModal() {
+    const modal = document.getElementById('export-modal');
+    modal.classList.remove('active');
+}
+
+function toggleExportType() {
+    const exportType = document.querySelector('input[name="export_type"]:checked').value;
+    const monthSelector = document.getElementById('month-selector');
+    const customSelector = document.getElementById('custom-selector');
+
+    if (exportType === 'month') {
+        monthSelector.style.display = 'block';
+        customSelector.style.display = 'none';
+    } else {
+        monthSelector.style.display = 'none';
+        customSelector.style.display = 'block';
+    }
+}
+
+function exportReport() {
+    const exportType = document.querySelector('input[name="export_type"]:checked').value;
+    const employeeSlug = '{{ employee.slug }}';
+
+    let startDate, endDate;
+
+    if (exportType === 'month') {
+        const monthValue = document.getElementById('export_month').value;
+        if (!monthValue) {
+            alert('Please select a month');
+            return;
+        }
+
+        const [year, month] = monthValue.split('-');
+        startDate = `${year}-${month}-01`;
+
+        const lastDay = new Date(year, month, 0).getDate();
+        endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    } else {
+        startDate = document.getElementById('export_start_date').value;
+        endDate = document.getElementById('export_end_date').value;
+
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('Start date must be before end date');
+            return;
+        }
+    }
+
+    window.location.href = `/reports/tip-report/employee/${employeeSlug}/export?start_date=${startDate}&end_date=${endDate}`;
+    closeExportModal();
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('export-modal');
+    if (event.target === modal) {
+        closeExportModal();
+    }
+}
+</script>
 {% endblock %}

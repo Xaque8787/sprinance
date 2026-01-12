@@ -9,7 +9,7 @@ import os
 from app.database import get_db
 from app.models import User, DailyBalance, Employee, DailyEmployeeEntry
 from app.auth.jwt_handler import get_current_user
-from app.utils.csv_generator import generate_tip_report_csv, generate_consolidated_daily_balance_csv
+from app.utils.csv_generator import generate_tip_report_csv, generate_consolidated_daily_balance_csv, generate_employee_tip_report_csv
 from app.utils.csv_reader import get_saved_tip_reports, parse_tip_report_csv, get_saved_daily_balance_reports, parse_daily_balance_csv
 
 router = APIRouter()
@@ -272,6 +272,39 @@ async def employee_tip_report(
             "total_take_home": total_take_home,
             "is_custom_range": bool(start_date and end_date)
         }
+    )
+
+@router.get("/reports/tip-report/employee/{employee_slug}/export")
+async def export_employee_tip_report(
+    employee_slug: str,
+    start_date: str,
+    end_date: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    employee = db.query(Employee).filter(Employee.slug == employee_slug).first()
+    if not employee:
+        return RedirectResponse(url="/reports/tip-report", status_code=303)
+
+    try:
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        return RedirectResponse(url=f"/reports/tip-report/employee/{employee_slug}", status_code=303)
+
+    filename = generate_employee_tip_report_csv(db, employee, start_date_obj, end_date_obj)
+    filepath = os.path.join("data/reports/tip_report", filename)
+
+    if not os.path.exists(filepath):
+        return RedirectResponse(url=f"/reports/tip-report/employee/{employee_slug}", status_code=303)
+
+    return FileResponse(
+        path=filepath,
+        filename=filename,
+        media_type="text/csv"
     )
 
 @router.get("/reports/tip-report/export")

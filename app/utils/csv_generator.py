@@ -316,3 +316,95 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
         writer.writerow(["Net Cash Over/Under", f"${total_expenses - total_revenue:.2f}"])
 
     return filename
+
+def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date: date, end_date: date) -> str:
+    reports_dir = "data/reports/tip_report"
+    if not os.path.exists(reports_dir):
+        os.makedirs(reports_dir)
+
+    employee_slug = employee.slug
+    filename = f"tip-report-{employee_slug}-{start_date}-to-{end_date}.csv"
+    filepath = os.path.join(reports_dir, filename)
+
+    entries = db.query(DailyEmployeeEntry).filter(
+        DailyEmployeeEntry.employee_id == employee.id
+    ).join(DailyBalance).filter(
+        DailyBalance.finalized == True,
+        DailyBalance.date >= start_date,
+        DailyBalance.date <= end_date
+    ).order_by(DailyBalance.date).all()
+
+    with open(filepath, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+
+        writer.writerow(["Employee Tip Report"])
+        writer.writerow(["Employee", employee.name])
+        writer.writerow(["Position", employee.position.name])
+        writer.writerow(["Date Range", f"{start_date} to {end_date}"])
+        writer.writerow([])
+
+        if not entries:
+            writer.writerow(["No entries found for this employee in the selected date range"])
+            return filename
+
+        total_bank_card_tips = sum(entry.bank_card_tips or 0 for entry in entries)
+        total_cash_tips = sum(entry.cash_tips or 0 for entry in entries)
+        total_adjustments = sum(entry.adjustments or 0 for entry in entries)
+        total_tips_on_paycheck = sum(entry.tips_on_paycheck or 0 for entry in entries)
+        total_tip_out = sum(entry.tip_out or 0 for entry in entries)
+        total_take_home = sum(entry.calculated_take_home or 0 for entry in entries)
+        num_shifts = len(entries)
+
+        writer.writerow(["Summary"])
+        writer.writerow(["Total Bank Card Tips", f"${total_bank_card_tips:.2f}"])
+        writer.writerow(["Total Cash Tips", f"${total_cash_tips:.2f}"])
+        writer.writerow(["Total Adjustments", f"${total_adjustments:.2f}"])
+        writer.writerow(["Total Tips on Paycheck", f"${total_tips_on_paycheck:.2f}"])
+        writer.writerow(["Total Tip Out", f"${total_tip_out:.2f}"])
+        writer.writerow(["Total Take Home", f"${total_take_home:.2f}"])
+        writer.writerow(["Number of Shifts", num_shifts])
+        writer.writerow([])
+
+        writer.writerow(["Daily Breakdown"])
+        writer.writerow([
+            "Date",
+            "Day",
+            "Bank Card Sales",
+            "Bank Card Tips",
+            "Total Sales",
+            "Cash Tips",
+            "Adjustments",
+            "Tips on Paycheck",
+            "Tip Out",
+            "Take Home"
+        ])
+
+        for entry in entries:
+            writer.writerow([
+                entry.daily_balance.date,
+                entry.daily_balance.day_of_week,
+                f"${entry.bank_card_sales:.2f}",
+                f"${entry.bank_card_tips:.2f}",
+                f"${entry.total_sales:.2f}",
+                f"${entry.cash_tips:.2f}",
+                f"${entry.adjustments:.2f}",
+                f"${entry.tips_on_paycheck:.2f}",
+                f"${entry.tip_out:.2f}",
+                f"${entry.calculated_take_home:.2f}"
+            ])
+
+        writer.writerow([])
+        writer.writerow([
+            "TOTAL",
+            "",
+            "",
+            f"${total_bank_card_tips:.2f}",
+            "",
+            f"${total_cash_tips:.2f}",
+            f"${total_adjustments:.2f}",
+            f"${total_tips_on_paycheck:.2f}",
+            f"${total_tip_out:.2f}",
+            f"${total_take_home:.2f}"
+        ])
+
+    return filename
