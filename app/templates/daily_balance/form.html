@@ -240,66 +240,16 @@
                                    value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).calculated_take_home }}{% else %}0.00{% endif %}"
                                    class="calculated-field calculated-take-home"
                                    data-employee-id="{{ emp.id }}">
-                            {% elif req.field_name == 'bank_card_sales' %}
-                            <input type="number" step="0.01" name="bank_card_sales_{{ emp.id }}"
-                                   class="tip-input"
+                            {% else %}
+                            <input type="number" step="0.01" name="{{ req.field_name }}_{{ emp.id }}"
+                                   class="tip-input{% if req.field_name in ['bank_card_tips', 'cash_tips', 'adjustments', 'tips_on_paycheck', 'tip_out'] %}" data-tip-field="{{ req.field_name }}{% endif %}"
                                    data-employee-id="{{ emp.id }}"
-                                   value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).bank_card_sales }}{% else %}0.00{% endif %}"
-                                   {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                            {% elif req.field_name == 'bank_card_tips' %}
-                            <input type="number" step="0.01" name="bank_card_tips_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
-                                   data-tip-field="bank_card_tips"
-                                   value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).bank_card_tips }}{% else %}0.00{% endif %}"
-                                   {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                            {% elif req.field_name == 'total_sales' %}
-                            <input type="number" step="0.01" name="total_sales_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
-                                   value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).total_sales }}{% else %}0.00{% endif %}"
-                                   {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                            {% elif req.field_name == 'cash_tips' %}
-                            <input type="number" step="0.01" name="cash_tips_{{ emp.id }}"
-                                   class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
-                                   data-tip-field="cash_tips"
-                                   value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).cash_tips }}{% else %}0.00{% endif %}"
+                                   value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id)[req.field_name] }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% endif %}
                         </div>
                         {% endif %}
                     {% endfor %}
-
-                    <div class="form-group">
-                        <label>Adjustments</label>
-                        <input type="number" step="0.01" name="adjustments_{{ emp.id }}"
-                               class="tip-input"
-                               data-employee-id="{{ emp.id }}"
-                               data-tip-field="adjustments"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).adjustments }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tips on Paycheck</label>
-                        <input type="number" step="0.01" name="tips_on_paycheck_{{ emp.id }}"
-                               class="tip-input"
-                               data-employee-id="{{ emp.id }}"
-                               data-tip-field="tips_on_paycheck"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).tips_on_paycheck }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tip Out</label>
-                        <input type="number" step="0.01" name="tip_out_{{ emp.id }}"
-                               class="tip-input"
-                               data-employee-id="{{ emp.id }}"
-                               data-tip-field="tip_out"
-                               value="{% if employee_entries.get(emp.id) %}{{ employee_entries.get(emp.id).tip_out }}{% else %}0.00{% endif %}"
-                               {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
-                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -387,7 +337,7 @@ function addEmployeeEntry(emp) {
                     </div>
                 `;
             } else {
-                const tipFieldClass = ['bank_card_tips', 'cash_tips', 'adjustments', 'tips_on_paycheck'].includes(req.field_name) ?
+                const tipFieldClass = ['bank_card_tips', 'cash_tips', 'adjustments', 'tips_on_paycheck', 'tip_out'].includes(req.field_name) ?
                     `tip-input" data-tip-field="${req.field_name}` : 'tip-input';
                 tipFields += `
                     <div class="form-group">
@@ -413,33 +363,6 @@ function addEmployeeEntry(emp) {
         <input type="hidden" name="employee_ids" value="${emp.id}" class="employee-id-input">
         <div class="form-row">
             ${tipFields}
-            <div class="form-group">
-                <label>Adjustments</label>
-                <input type="number" step="0.01"
-                       name="adjustments_${emp.id}"
-                       class="tip-input"
-                       data-employee-id="${emp.id}"
-                       data-tip-field="adjustments"
-                       value="0.00">
-            </div>
-            <div class="form-group">
-                <label>Tips on Paycheck</label>
-                <input type="number" step="0.01"
-                       name="tips_on_paycheck_${emp.id}"
-                       class="tip-input"
-                       data-employee-id="${emp.id}"
-                       data-tip-field="tips_on_paycheck"
-                       value="0.00">
-            </div>
-            <div class="form-group">
-                <label>Tip Out</label>
-                <input type="number" step="0.01"
-                       name="tip_out_${emp.id}"
-                       class="tip-input"
-                       data-employee-id="${emp.id}"
-                       data-tip-field="tip_out"
-                       value="0.00">
-            </div>
         </div>
     `;
 
