@@ -66,6 +66,7 @@
                     <tr>
                         <th>Requirement Name</th>
                         <th>Field Name</th>
+                        <th>Display Order</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -74,7 +75,9 @@
                     <tr>
                         <td><strong>{{ req.name }}</strong></td>
                         <td><code>{{ req.field_name }}</code></td>
+                        <td>{{ req.display_order }}</td>
                         <td class="actions">
+                            <button onclick="openEditModal('{{ req.slug }}', '{{ req.name }}', '{{ req.field_name }}', {{ req.display_order }})" class="btn btn-sm">Edit</button>
                             <form action="/tip-requirements/{{ req.slug }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Delete this requirement? It will be removed from all positions.');">
                                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                             </form>
@@ -104,7 +107,36 @@
                 <input type="text" id="field_name" name="field_name" required placeholder="e.g., bank_card_sales">
                 <small>Use lowercase with underscores (snake_case)</small>
             </div>
+            <div class="form-group">
+                <label for="display_order">Display Order:</label>
+                <input type="number" id="display_order" name="display_order" value="0" min="0">
+                <small>Lower numbers appear first in forms</small>
+            </div>
             <button type="submit" class="btn btn-primary">Create Requirement</button>
+        </form>
+    </div>
+</div>
+
+<div id="editTipModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="document.getElementById('editTipModal').style.display='none'">&times;</span>
+        <h2>Edit Tip Requirement</h2>
+        <form id="editTipForm" method="post">
+            <div class="form-group">
+                <label for="edit_name">Requirement Name:</label>
+                <input type="text" id="edit_name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_field_name">Field Name (technical):</label>
+                <input type="text" id="edit_field_name" name="field_name" required>
+                <small>Use lowercase with underscores (snake_case)</small>
+            </div>
+            <div class="form-group">
+                <label for="edit_display_order">Display Order:</label>
+                <input type="number" id="edit_display_order" name="display_order" value="0" min="0">
+                <small>Lower numbers appear first in forms</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Requirement</button>
         </form>
     </div>
 </div>
@@ -167,4 +199,25 @@
     padding: 2rem;
 }
 </style>
+
+<script>
+function openEditModal(slug, name, fieldName, displayOrder) {
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_field_name').value = fieldName;
+    document.getElementById('edit_display_order').value = displayOrder;
+    document.getElementById('editTipForm').action = '/tip-requirements/' + slug + '/update';
+    document.getElementById('editTipModal').style.display = 'block';
+}
+
+window.onclick = function(event) {
+    const newModal = document.getElementById('newTipModal');
+    const editModal = document.getElementById('editTipModal');
+    if (event.target == newModal) {
+        newModal.style.display = 'none';
+    }
+    if (event.target == editModal) {
+        editModal.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

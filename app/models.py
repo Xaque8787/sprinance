@@ -6,8 +6,7 @@ position_tip_requirements = Table(
     'position_tip_requirements',
     Base.metadata,
     Column('position_id', Integer, ForeignKey('positions.id'), primary_key=True),
-    Column('tip_requirement_id', Integer, ForeignKey('tip_entry_requirements.id'), primary_key=True),
-    Column('display_order', Integer, default=0)
+    Column('tip_requirement_id', Integer, ForeignKey('tip_entry_requirements.id'), primary_key=True)
 )
 
 class User(Base):
@@ -40,6 +39,7 @@ class TipEntryRequirement(Base):
     name = Column(String, unique=True, nullable=False)
     slug = Column(String, unique=True, index=True, nullable=False)
     field_name = Column(String, unique=True, nullable=False)
+    display_order = Column(Integer, default=0)
 
     positions = relationship(
         "Position",

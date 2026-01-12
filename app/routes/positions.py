@@ -19,7 +19,7 @@ async def positions_page(
     current_user: User = Depends(get_current_user)
 ):
     positions = db.query(Position).all()
-    tip_requirements = db.query(TipEntryRequirement).all()
+    tip_requirements = db.query(TipEntryRequirement).order_by(TipEntryRequirement.display_order).all()
     return templates.TemplateResponse(
         "positions/list.html",
         {
@@ -36,7 +36,7 @@ async def new_position_page(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    tip_requirements = db.query(TipEntryRequirement).all()
+    tip_requirements = db.query(TipEntryRequirement).order_by(TipEntryRequirement.display_order).all()
     return templates.TemplateResponse(
         "positions/form.html",
         {
@@ -55,8 +55,6 @@ async def create_position(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    form_data = await request.form()
-
     slug = ensure_unique_slug(db, Position, create_slug(name))
 
     new_position = Position(
@@ -68,10 +66,9 @@ async def create_position(
     db.flush()
 
     for req_id in tip_requirement_ids:
-        display_order = int(form_data.get(f"display_order_{req_id}", 0))
         db.execute(
-            text("INSERT INTO position_tip_requirements (position_id, tip_requirement_id, display_order) VALUES (:position_id, :req_id, :display_order)"),
-            {"position_id": new_position.id, "req_id": req_id, "display_order": display_order}
+            text("INSERT INTO position_tip_requirements (position_id, tip_requirement_id) VALUES (:position_id, :req_id)"),
+            {"position_id": new_position.id, "req_id": req_id}
         )
 
     db.commit()
@@ -89,18 +86,7 @@ async def edit_position_page(
     if not position:
         raise HTTPException(status_code=404, detail="Position not found")
 
-    tip_requirements = db.query(TipEntryRequirement).all()
-
-    display_orders = {}
-    result = db.execute(
-        text("SELECT tip_requirement_id, display_order FROM position_tip_requirements WHERE position_id = :position_id"),
-        {"position_id": position.id}
-    )
-    for row in result:
-        display_orders[row[0]] = row[1]
-
-    for req in tip_requirements:
-        req.display_order = display_orders.get(req.id, 0)
+    tip_requirements = db.query(TipEntryRequirement).order_by(TipEntryRequirement.display_order).all()
 
     return templates.TemplateResponse(
         "positions/form.html",
@@ -121,8 +107,6 @@ async def update_position(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    form_data = await request.form()
-
     position = db.query(Position).filter(Position.slug == slug).first()
     if not position:
         raise HTTPException(status_code=404, detail="Position not found")
@@ -135,10 +119,9 @@ async def update_position(
     )
 
     for req_id in tip_requirement_ids:
-        display_order = int(form_data.get(f"display_order_{req_id}", 0))
         db.execute(
-            text("INSERT INTO position_tip_requirements (position_id, tip_requirement_id, display_order) VALUES (:position_id, :req_id, :display_order)"),
-            {"position_id": position.id, "req_id": req_id, "display_order": display_order}
+            text("INSERT INTO position_tip_requirements (position_id, tip_requirement_id) VALUES (:position_id, :req_id)"),
+            {"position_id": position.id, "req_id": req_id}
         )
 
     db.commit()

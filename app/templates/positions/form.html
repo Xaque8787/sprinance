@@ -17,7 +17,7 @@
 
             <div class="form-group">
                 <label>Tip Entry Requirements:</label>
-                <p class="help-text">Select requirements and set their display order (lower numbers appear first)</p>
+                <p class="help-text">Select which requirements are needed for this position. Display order is set globally in the Tip Entry Requirements table.</p>
                 <div class="checkbox-group">
                     {% for req in tip_requirements %}
                     <div class="checkbox-item">
@@ -27,20 +27,8 @@
                             name="tip_requirement_ids"
                             value="{{ req.id }}"
                             {% if position and req in position.tip_requirements %}checked{% endif %}
-                            onchange="toggleOrderInput({{ req.id }})"
                         >
                         <label for="tip_req_{{ req.id }}">{{ req.name }}</label>
-                        <input
-                            type="number"
-                            id="order_{{ req.id }}"
-                            name="display_order_{{ req.id }}"
-                            class="order-input"
-                            min="0"
-                            step="1"
-                            placeholder="Order"
-                            value="{% if position %}{{ position.tip_requirements|selectattr('id', 'equalto', req.id)|map(attribute='display_order')|first|default(0) }}{% else %}0{% endif %}"
-                            {% if not position or req not in position.tip_requirements %}disabled{% endif %}
-                        >
                     </div>
                     {% endfor %}
                 </div>
@@ -79,18 +67,6 @@
     margin: 0;
     font-weight: normal;
     cursor: pointer;
-    flex: 1;
-}
-
-.checkbox-item .order-input {
-    width: 80px;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
-.checkbox-item .order-input:disabled {
-    background: #e9ecef;
-    cursor: not-allowed;
 }
 
 .help-text {
@@ -105,20 +81,4 @@
     margin-top: 2rem;
 }
 </style>
-
-<script>
-function toggleOrderInput(reqId) {
-    const checkbox = document.getElementById(`tip_req_${reqId}`);
-    const orderInput = document.getElementById(`order_${reqId}`);
-
-    if (checkbox.checked) {
-        orderInput.disabled = false;
-        if (!orderInput.value) {
-            orderInput.value = 0;
-        }
-    } else {
-        orderInput.disabled = true;
-    }
-}
-</script>
 {% endblock %}

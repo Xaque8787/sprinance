@@ -117,20 +117,10 @@ def save_daily_balance_data(
     return daily_balance
 
 def attach_display_orders_to_employee(emp, db):
-    display_orders = {}
-    result = db.execute(
-        text("SELECT tip_requirement_id, display_order FROM position_tip_requirements WHERE position_id = :position_id ORDER BY display_order"),
-        {"position_id": emp.position.id}
+    requirements_with_order = sorted(
+        emp.position.tip_requirements,
+        key=lambda req: req.display_order
     )
-    for row in result:
-        display_orders[row[0]] = row[1]
-
-    requirements_with_order = []
-    for req in emp.position.tip_requirements:
-        req.display_order = display_orders.get(req.id, 0)
-        requirements_with_order.append(req)
-
-    requirements_with_order.sort(key=lambda x: x.display_order)
     emp.position.tip_requirements = requirements_with_order
 
 def serialize_employee(emp, db):
