@@ -15,7 +15,7 @@
         </a>
     </div>
 
-    {% if report_data.summary %}
+    {% if report_data.summary and report_data.summary|length > 0 %}
     <div class="report-section">
         <h2>Summary</h2>
         <div class="table-wrapper">
@@ -50,6 +50,10 @@
                 </tbody>
             </table>
         </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No summary data found in this report</p>
     </div>
     {% endif %}
 
@@ -205,6 +209,19 @@
 
 .center {
     text-align: center;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin: 2rem 0;
+}
+
+.empty-state p {
+    color: #6c757d;
+    font-size: 1.1rem;
 }
 
 .employee-detail {

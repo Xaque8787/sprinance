@@ -252,6 +252,10 @@ async def view_saved_tip_report(
     if not report_data:
         return RedirectResponse(url="/reports/tip-report", status_code=303)
 
+    print(f"DEBUG: Parsed report data - Summary count: {len(report_data.get('summary', []))}, Details count: {len(report_data.get('details', []))}")
+    if report_data.get('summary'):
+        print(f"DEBUG: First summary item: {report_data['summary'][0]}")
+
     return templates.TemplateResponse(
         "reports/view_saved_tip_report.html",
         {

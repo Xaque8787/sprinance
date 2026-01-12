@@ -64,37 +64,41 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
     details_start = None
 
     for i, row in enumerate(rows):
-        if row and row[0] == "Employee Name":
+        if row and len(row) > 0 and row[0] == "Employee Name":
             summary_start = i
-        elif row and "Detailed Daily Breakdown" in row[0]:
+            print(f"DEBUG: Found summary start at row {i}")
+        elif row and len(row) > 0 and "Detailed Daily Breakdown" in str(row[0]):
             details_start = i
+            print(f"DEBUG: Found details start at row {i}")
             break
 
-    if summary_start:
+    if summary_start is not None:
         for i in range(summary_start + 1, len(rows)):
             row = rows[i]
-            if not row or not row[0] or row[0] == '' or 'Detailed' in (row[0] if row else ''):
+            if not row or len(row) == 0:
                 break
-            if len(row) >= 9:
+            if row[0] == '' or 'Detailed' in str(row[0]):
+                break
+            if len(row) >= 9 and row[0].strip():
                 report_data['summary'].append({
-                    'employee_name': row[0],
-                    'position': row[1],
-                    'bank_card_tips': row[2],
-                    'cash_tips': row[3],
-                    'adjustments': row[4],
-                    'tips_on_paycheck': row[5],
-                    'tip_out': row[6],
-                    'take_home': row[7],
-                    'num_shifts': row[8]
+                    'employee_name': row[0].strip(),
+                    'position': row[1].strip() if len(row) > 1 else '',
+                    'bank_card_tips': row[2].strip() if len(row) > 2 else '',
+                    'cash_tips': row[3].strip() if len(row) > 3 else '',
+                    'adjustments': row[4].strip() if len(row) > 4 else '',
+                    'tips_on_paycheck': row[5].strip() if len(row) > 5 else '',
+                    'tip_out': row[6].strip() if len(row) > 6 else '',
+                    'take_home': row[7].strip() if len(row) > 7 else '',
+                    'num_shifts': row[8].strip() if len(row) > 8 else ''
                 })
 
-    if details_start:
+    if details_start is not None:
         current_employee = None
         current_entries = []
 
         for i in range(details_start + 2, len(rows)):
             row = rows[i]
-            if not row or not row[0]:
+            if not row or len(row) == 0 or not row[0]:
                 if current_employee and current_entries:
                     report_data['details'].append({
                         'employee': current_employee,
@@ -104,31 +108,33 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
                     current_entries = []
                 continue
 
-            if row[0].startswith('Employee:'):
+            cell_value = str(row[0]).strip()
+
+            if cell_value.startswith('Employee:'):
                 if current_employee and current_entries:
                     report_data['details'].append({
                         'employee': current_employee,
                         'entries': current_entries
                     })
-                current_employee = row[0].replace('Employee: ', '')
+                current_employee = cell_value.replace('Employee: ', '')
                 current_entries = []
-            elif row[0] == 'Date':
+            elif cell_value == 'Date':
                 continue
-            elif row[0] == 'TOTAL':
+            elif cell_value == 'TOTAL':
                 continue
-            elif current_employee:
+            elif current_employee and cell_value:
                 if len(row) >= 10:
                     current_entries.append({
-                        'date': row[0],
-                        'day': row[1],
-                        'bank_card_sales': row[2],
-                        'bank_card_tips': row[3],
-                        'total_sales': row[4],
-                        'cash_tips': row[5],
-                        'adjustments': row[6],
-                        'tips_on_paycheck': row[7],
-                        'tip_out': row[8],
-                        'take_home': row[9]
+                        'date': row[0].strip(),
+                        'day': row[1].strip() if len(row) > 1 else '',
+                        'bank_card_sales': row[2].strip() if len(row) > 2 else '',
+                        'bank_card_tips': row[3].strip() if len(row) > 3 else '',
+                        'total_sales': row[4].strip() if len(row) > 4 else '',
+                        'cash_tips': row[5].strip() if len(row) > 5 else '',
+                        'adjustments': row[6].strip() if len(row) > 6 else '',
+                        'tips_on_paycheck': row[7].strip() if len(row) > 7 else '',
+                        'tip_out': row[8].strip() if len(row) > 8 else '',
+                        'take_home': row[9].strip() if len(row) > 9 else ''
                     })
 
         if current_employee and current_entries:
