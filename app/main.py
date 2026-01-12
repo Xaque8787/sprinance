@@ -42,19 +42,35 @@ def initialize_predefined_data():
 
     requirements = {}
     for req_data in predefined_requirements:
+        slug = create_slug(req_data["name"])
+
+        # Check by both name and slug to handle edge cases
         existing = db.query(TipEntryRequirement).filter(
-            TipEntryRequirement.name == req_data["name"]
+            (TipEntryRequirement.name == req_data["name"]) |
+            (TipEntryRequirement.slug == slug)
         ).first()
 
         if not existing:
-            requirement = TipEntryRequirement(
-                name=req_data["name"],
-                slug=create_slug(req_data["name"]),
-                field_name=req_data["field_name"]
-            )
-            db.add(requirement)
-            db.flush()
-            requirements[req_data["name"]] = requirement
+            try:
+                requirement = TipEntryRequirement(
+                    name=req_data["name"],
+                    slug=slug,
+                    field_name=req_data["field_name"]
+                )
+                db.add(requirement)
+                db.flush()
+                requirements[req_data["name"]] = requirement
+            except Exception:
+                # If insert fails, try to fetch the existing record
+                db.rollback()
+                existing = db.query(TipEntryRequirement).filter(
+                    (TipEntryRequirement.name == req_data["name"]) |
+                    (TipEntryRequirement.slug == slug)
+                ).first()
+                if existing:
+                    requirements[req_data["name"]] = existing
+                else:
+                    raise
         else:
             requirements[req_data["name"]] = existing
 
@@ -82,14 +98,33 @@ def initialize_predefined_data():
     ]
 
     for pos_data in predefined_positions:
-        existing = db.query(Position).filter(Position.name == pos_data["name"]).first()
+        slug = create_slug(pos_data["name"])
+
+        # Check by both name and slug to handle edge cases
+        existing = db.query(Position).filter(
+            (Position.name == pos_data["name"]) |
+            (Position.slug == slug)
+        ).first()
 
         if not existing:
-            position = Position(
-                name=pos_data["name"],
-                slug=create_slug(pos_data["name"])
-            )
-            db.add(position)
+            try:
+                position = Position(
+                    name=pos_data["name"],
+                    slug=slug
+                )
+                db.add(position)
+                db.flush()
+            except Exception:
+                # If insert fails, try to fetch the existing record
+                db.rollback()
+                existing = db.query(Position).filter(
+                    (Position.name == pos_data["name"]) |
+                    (Position.slug == slug)
+                ).first()
+                if existing:
+                    position = existing
+                else:
+                    raise
         else:
             position = existing
 
