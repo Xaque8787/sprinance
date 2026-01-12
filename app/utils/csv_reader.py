@@ -104,12 +104,86 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
     if len(rows) < 2:
         return None
 
+    is_employee_specific = False
+    employee_name = None
+    employee_position = None
+
+    if len(rows) > 2 and rows[1] and len(rows[1]) > 1 and rows[1][0] == "Employee":
+        is_employee_specific = True
+        employee_name = rows[1][1] if len(rows[1]) > 1 else ''
+        if len(rows) > 2 and rows[2] and len(rows[2]) > 1 and rows[2][0] == "Position":
+            employee_position = rows[2][1]
+
     report_data = {
         'title': rows[0][0] if rows[0] else 'Employee Tip Report',
-        'date_range': rows[1][1] if len(rows[1]) > 1 else '',
+        'date_range': '',
         'summary': [],
-        'details': []
+        'details': [],
+        'is_employee_specific': is_employee_specific,
+        'employee_name': employee_name,
+        'employee_position': employee_position
     }
+
+    if is_employee_specific:
+        for i, row in enumerate(rows):
+            if row and len(row) > 1 and row[0] == "Date Range":
+                report_data['date_range'] = row[1]
+            elif row and len(row) > 0 and row[0] == "Summary":
+                summary_data = {}
+                for j in range(i + 1, len(rows)):
+                    if not rows[j] or len(rows[j]) < 2:
+                        break
+                    key = rows[j][0].strip()
+                    value = rows[j][1].strip()
+                    if key:
+                        summary_data[key] = value
+
+                if summary_data:
+                    report_data['summary'].append({
+                        'employee_name': employee_name,
+                        'position': employee_position,
+                        'bank_card_tips': summary_data.get('Total Bank Card Tips', ''),
+                        'cash_tips': summary_data.get('Total Cash Tips', ''),
+                        'adjustments': summary_data.get('Total Adjustments', ''),
+                        'tips_on_paycheck': summary_data.get('Total Tips on Paycheck', ''),
+                        'tip_out': summary_data.get('Total Tip Out', ''),
+                        'take_home': summary_data.get('Total Take Home', ''),
+                        'num_shifts': summary_data.get('Number of Shifts', '')
+                    })
+                break
+
+        for i, row in enumerate(rows):
+            if row and len(row) > 0 and row[0] == "Daily Breakdown":
+                if i + 1 < len(rows) and rows[i + 1] and rows[i + 1][0] == "Date":
+                    entries = []
+                    for j in range(i + 2, len(rows)):
+                        if not rows[j] or len(rows[j]) < 10:
+                            break
+                        if rows[j][0] == "TOTAL":
+                            break
+                        entries.append({
+                            'date': rows[j][0].strip(),
+                            'day': rows[j][1].strip() if len(rows[j]) > 1 else '',
+                            'bank_card_sales': rows[j][2].strip() if len(rows[j]) > 2 else '',
+                            'bank_card_tips': rows[j][3].strip() if len(rows[j]) > 3 else '',
+                            'total_sales': rows[j][4].strip() if len(rows[j]) > 4 else '',
+                            'cash_tips': rows[j][5].strip() if len(rows[j]) > 5 else '',
+                            'adjustments': rows[j][6].strip() if len(rows[j]) > 6 else '',
+                            'tips_on_paycheck': rows[j][7].strip() if len(rows[j]) > 7 else '',
+                            'tip_out': rows[j][8].strip() if len(rows[j]) > 8 else '',
+                            'take_home': rows[j][9].strip() if len(rows[j]) > 9 else ''
+                        })
+
+                    if entries:
+                        report_data['details'].append({
+                            'employee': f"{employee_name} - {employee_position}",
+                            'entries': entries
+                        })
+                break
+
+        return report_data
+
+    report_data['date_range'] = rows[1][1] if len(rows[1]) > 1 else ''
 
     summary_start = None
     details_start = None
