@@ -278,11 +278,11 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
         reader = csv.reader(csvfile)
         rows = list(reader)
 
-    print(f"DEBUG parse_daily_balance_csv: filepath={filepath}")
-    print(f"DEBUG: Total rows={len(rows)}")
-    print(f"DEBUG: First 10 rows:")
+    print(f"\nDEBUG parse_daily_balance_csv: filepath={filepath}", flush=True)
+    print(f"DEBUG: Total rows={len(rows)}", flush=True)
+    print(f"DEBUG: First 10 rows:", flush=True)
     for idx, row in enumerate(rows[:10]):
-        print(f"  Row {idx}: {row}")
+        print(f"  Row {idx}: {row}", flush=True)
 
     if len(rows) < 2:
         return None
@@ -326,10 +326,10 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
             if i < len(rows) and rows[i] and rows[i][0] == 'Revenue & Income':
                 i += 1
                 while i < len(rows) and rows[i] and len(rows[i]) >= 2:
-                    print(f"DEBUG Revenue loop: i={i}, row={rows[i]}")
+                    print(f"DEBUG Revenue loop: i={i}, row={rows[i]}", flush=True)
                     if rows[i][0] == 'Total Revenue':
                         daily_report['revenue_total'] = rows[i][1]
-                        print(f"DEBUG: Set revenue_total to {rows[i][1]}")
+                        print(f"DEBUG: Set revenue_total to {rows[i][1]}", flush=True)
                         i += 1
                         break
                     elif rows[i][0] and rows[i][0] not in ['', 'Deposits & Expenses', 'Employee Breakdown']:
@@ -345,10 +345,10 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
             if i < len(rows) and rows[i] and rows[i][0] == 'Deposits & Expenses':
                 i += 1
                 while i < len(rows) and rows[i] and len(rows[i]) >= 2:
-                    print(f"DEBUG Expense loop: i={i}, row={rows[i]}")
+                    print(f"DEBUG Expense loop: i={i}, row={rows[i]}", flush=True)
                     if rows[i][0] == 'Total Expenses':
                         daily_report['expense_total'] = rows[i][1]
-                        print(f"DEBUG: Set expense_total to {rows[i][1]}")
+                        print(f"DEBUG: Set expense_total to {rows[i][1]}", flush=True)
                         i += 1
                         break
                     elif rows[i][0] and rows[i][0] not in ['', 'Cash Over/Under', 'Employee Breakdown']:
@@ -363,7 +363,7 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
 
             if i < len(rows) and rows[i] and rows[i][0] == 'Cash Over/Under':
                 daily_report['cash_over_under'] = rows[i][1]
-                print(f"DEBUG: Set cash_over_under to {rows[i][1]}")
+                print(f"DEBUG: Set cash_over_under to {rows[i][1]}", flush=True)
                 i += 1
 
             while i < len(rows) and (not rows[i] or len(rows[i]) == 0 or rows[i][0] == ''):
@@ -393,8 +393,16 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
                     })
                     i += 1
 
+            print(f"\nDEBUG: Built daily_report object:", flush=True)
+            print(f"  revenue_total: {daily_report['revenue_total']}", flush=True)
+            print(f"  expense_total: {daily_report['expense_total']}", flush=True)
+            print(f"  cash_over_under: {daily_report['cash_over_under']}", flush=True)
+            print(f"  revenue_items count: {len(daily_report['revenue_items'])}", flush=True)
+            print(f"  expense_items count: {len(daily_report['expense_items'])}", flush=True)
+
             report_data['daily_reports'].append(daily_report)
 
         i += 1
 
+    print(f"\nDEBUG: Returning report_data with {len(report_data['daily_reports'])} daily reports", flush=True)
     return report_data

@@ -124,11 +124,15 @@ async def view_saved_daily_balance_report(
         return RedirectResponse(url="/login", status_code=303)
 
     filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
+    print(f"\n\n=== VIEWING SAVED DAILY BALANCE REPORT ===", flush=True)
+    print(f"Filepath: {filepath}", flush=True)
+    print(f"File exists: {os.path.exists(filepath)}", flush=True)
 
     if not os.path.exists(filepath):
         return RedirectResponse(url="/reports/daily-balance", status_code=303)
 
     report_data = parse_daily_balance_csv(filepath)
+    print(f"Report data keys: {report_data.keys() if report_data else 'None'}", flush=True)
 
     if not report_data:
         return RedirectResponse(url="/reports/daily-balance", status_code=303)
