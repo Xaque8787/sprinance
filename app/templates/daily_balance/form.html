@@ -57,9 +57,14 @@
                     <tbody>
                         {% for template in financial_templates %}
                             {% if template.category == 'revenue' %}
-                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}">
+                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}" data-is-deduction="{{ template.is_deduction|lower }}">
                             <td>
-                                <span class="item-name-display" id="name-display-{{ template.id }}">{{ template.name }}</span>
+                                <span class="item-name-display" id="name-display-{{ template.id }}">
+                                    {{ template.name }}
+                                    {% if template.is_deduction %}
+                                    <span style="color: #dc2626; font-weight: bold;" title="This item subtracts from the total"> (−)</span>
+                                    {% endif %}
+                                </span>
                                 <input type="text" class="item-name-edit" id="name-edit-{{ template.id }}" value="{{ template.name }}" style="display: none;">
                                 {% if current_user.is_admin %}
                                 <span class="item-management-controls" style="display: none;">
@@ -75,6 +80,10 @@
                                     <button type="button" class="btn-icon btn-remove-small" onclick="deleteFinancialTemplate({{ template.id }}, 'revenue')" title="Remove item">
                                         <span class="icon">×</span>
                                     </button>
+                                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                                        <input type="checkbox" onchange="toggleDeduction({{ template.id }}, 'revenue', this.checked)" {% if template.is_deduction %}checked{% endif %} title="Mark as deduction">
+                                        <span style="font-size: 12px;">Deduction</span>
+                                    </label>
                                 </span>
                                 {% endif %}
                             </td>
@@ -125,9 +134,14 @@
                     <tbody>
                         {% for template in financial_templates %}
                             {% if template.category == 'expense' %}
-                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}">
+                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}" data-is-deduction="{{ template.is_deduction|lower }}">
                             <td>
-                                <span class="item-name-display" id="name-display-{{ template.id }}">{{ template.name }}</span>
+                                <span class="item-name-display" id="name-display-{{ template.id }}">
+                                    {{ template.name }}
+                                    {% if template.is_deduction %}
+                                    <span style="color: #dc2626; font-weight: bold;" title="This item subtracts from the total"> (−)</span>
+                                    {% endif %}
+                                </span>
                                 <input type="text" class="item-name-edit" id="name-edit-{{ template.id }}" value="{{ template.name }}" style="display: none;">
                                 {% if current_user.is_admin %}
                                 <span class="item-management-controls" style="display: none;">
@@ -143,6 +157,10 @@
                                     <button type="button" class="btn-icon btn-remove-small" onclick="deleteFinancialTemplate({{ template.id }}, 'expense')" title="Remove item">
                                         <span class="icon">×</span>
                                     </button>
+                                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                                        <input type="checkbox" onchange="toggleDeduction({{ template.id }}, 'expense', this.checked)" {% if template.is_deduction %}checked{% endif %} title="Mark as deduction">
+                                        <span style="font-size: 12px;">Deduction</span>
+                                    </label>
                                 </span>
                                 {% endif %}
                             </td>
@@ -187,6 +205,12 @@
             <div class="form-group">
                 <label for="new-item-name">Item Name</label>
                 <input type="text" id="new-item-name" placeholder="e.g., Liquor Sales" class="form-control">
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="new-item-is-deduction">
+                    <span>Mark as deduction (subtracts from total)</span>
+                </label>
             </div>
             <button type="button" class="btn btn-primary btn-sm" onclick="addFinancialTemplate()">Add Item</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="closeManageModal()">Close</button>
@@ -452,22 +476,38 @@ function attachEmployeeInputListeners(container) {
 }
 
 function calculateFinancialTotals() {
-    const table1Fields = document.querySelectorAll('.table1-field');
+    const table1Rows = document.querySelectorAll('#revenue-table tbody tr:not(.total-row)');
     let table1Total = 0;
 
-    table1Fields.forEach(field => {
-        const value = parseFloat(field.value) || 0;
-        table1Total += value;
+    table1Rows.forEach(row => {
+        const field = row.querySelector('.table1-field');
+        if (field) {
+            const value = parseFloat(field.value) || 0;
+            const isDeduction = row.dataset.isDeduction === 'true';
+            if (isDeduction) {
+                table1Total -= value;
+            } else {
+                table1Total += value;
+            }
+        }
     });
 
     document.getElementById('table1_total').value = table1Total.toFixed(2);
 
-    const table2Fields = document.querySelectorAll('.table2-field');
+    const table2Rows = document.querySelectorAll('#expense-table tbody tr:not(.total-row):not(.highlight-row)');
     let table2Total = 0;
 
-    table2Fields.forEach(field => {
-        const value = parseFloat(field.value) || 0;
-        table2Total += value;
+    table2Rows.forEach(row => {
+        const field = row.querySelector('.table2-field');
+        if (field) {
+            const value = parseFloat(field.value) || 0;
+            const isDeduction = row.dataset.isDeduction === 'true';
+            if (isDeduction) {
+                table2Total -= value;
+            } else {
+                table2Total += value;
+            }
+        }
     });
 
     document.getElementById('table2_total').value = table2Total.toFixed(2);
@@ -524,7 +564,9 @@ function closeManageModal() {
 
 async function addFinancialTemplate() {
     const nameInput = document.getElementById('new-item-name');
+    const isDeductionInput = document.getElementById('new-item-is-deduction');
     const name = nameInput.value.trim();
+    const isDeduction = isDeductionInput.checked;
 
     if (!name) {
         alert('Please enter an item name');
@@ -539,7 +581,8 @@ async function addFinancialTemplate() {
             },
             body: JSON.stringify({
                 name: name,
-                category: currentManageCategory
+                category: currentManageCategory,
+                is_deduction: isDeduction
             })
         });
 
@@ -557,9 +600,13 @@ async function addFinancialTemplate() {
         const newRow = document.createElement('tr');
         newRow.dataset.templateId = newTemplate.id;
         newRow.dataset.templateName = newTemplate.name;
+        newRow.dataset.isDeduction = newTemplate.is_deduction;
         newRow.innerHTML = `
             <td>
-                <span class="item-name-display" id="name-display-${newTemplate.id}">${newTemplate.name}</span>
+                <span class="item-name-display" id="name-display-${newTemplate.id}">
+                    ${newTemplate.name}
+                    ${newTemplate.is_deduction ? '<span style="color: #dc2626; font-weight: bold;" title="This item subtracts from the total"> (−)</span>' : ''}
+                </span>
                 <input type="text" class="item-name-edit" id="name-edit-${newTemplate.id}" value="${newTemplate.name}" style="display: none;">
                 <span class="item-management-controls" style="display: ${isManagementModeActive[currentManageCategory] ? 'inline' : 'none'};">
                     <button type="button" class="btn-icon btn-edit-small" onclick="startEditItemName(${newTemplate.id})" id="edit-btn-${newTemplate.id}" title="Rename item">
@@ -574,6 +621,10 @@ async function addFinancialTemplate() {
                     <button type="button" class="btn-icon btn-remove-small" onclick="deleteFinancialTemplate(${newTemplate.id}, '${currentManageCategory}')" title="Remove item">
                         <span class="icon">×</span>
                     </button>
+                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                        <input type="checkbox" onchange="toggleDeduction(${newTemplate.id}, '${currentManageCategory}', this.checked)" ${newTemplate.is_deduction ? 'checked' : ''} title="Mark as deduction">
+                        <span style="font-size: 12px;">Deduction</span>
+                    </label>
                 </span>
             </td>
             <td>
@@ -590,6 +641,7 @@ async function addFinancialTemplate() {
         inputField.addEventListener('input', calculateFinancialTotals);
 
         nameInput.value = '';
+        isDeductionInput.checked = false;
         calculateFinancialTotals();
 
         alert('Item added successfully! It will appear on all future days.');
@@ -707,6 +759,55 @@ async function deleteFinancialTemplate(templateId, category) {
     } catch (error) {
         console.error('Error deleting financial template:', error);
         alert(error.message || 'Failed to delete item. Please try again.');
+    }
+}
+
+async function toggleDeduction(templateId, category, isDeduction) {
+    const tableId = category === 'revenue' ? 'revenue-table' : 'expense-table';
+    const row = document.querySelector(`#${tableId} tr[data-template-id="${templateId}"]`);
+    const templateName = row.dataset.templateName;
+
+    try {
+        const response = await fetch(`/api/financial-items/templates/${templateId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: templateName,
+                is_deduction: isDeduction
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update deduction status');
+        }
+
+        row.dataset.isDeduction = isDeduction;
+
+        const nameDisplay = row.querySelector(`#name-display-${templateId}`);
+        const existingDeductionIndicator = nameDisplay.querySelector('span[title="This item subtracts from the total"]');
+
+        if (isDeduction && !existingDeductionIndicator) {
+            const indicator = document.createElement('span');
+            indicator.style.color = '#dc2626';
+            indicator.style.fontWeight = 'bold';
+            indicator.title = 'This item subtracts from the total';
+            indicator.textContent = ' (−)';
+            nameDisplay.appendChild(indicator);
+        } else if (!isDeduction && existingDeductionIndicator) {
+            existingDeductionIndicator.remove();
+        }
+
+        calculateFinancialTotals();
+
+    } catch (error) {
+        console.error('Error toggling deduction:', error);
+        alert('Failed to update deduction status. Please try again.');
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = !isDeduction;
+        }
     }
 }
 

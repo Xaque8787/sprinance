@@ -12,9 +12,11 @@ router = APIRouter()
 class FinancialLineItemTemplateCreate(BaseModel):
     name: str
     category: str
+    is_deduction: bool = False
 
 class FinancialLineItemTemplateUpdate(BaseModel):
     name: str
+    is_deduction: bool = False
 
 @router.get("/api/financial-items/templates")
 async def get_templates(
@@ -27,12 +29,12 @@ async def get_templates(
     ).all()
 
     revenue_items = [
-        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default}
+        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default, "is_deduction": t.is_deduction}
         for t in templates if t.category == "revenue"
     ]
 
     expense_items = [
-        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default}
+        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default, "is_deduction": t.is_deduction}
         for t in templates if t.category == "expense"
     ]
 
@@ -55,7 +57,8 @@ async def create_template(
         name=template.name,
         category=template.category,
         display_order=max_order,
-        is_default=False
+        is_default=False,
+        is_deduction=template.is_deduction
     )
 
     db.add(new_template)
@@ -67,7 +70,8 @@ async def create_template(
         "name": new_template.name,
         "category": new_template.category,
         "display_order": new_template.display_order,
-        "is_default": new_template.is_default
+        "is_default": new_template.is_default,
+        "is_deduction": new_template.is_deduction
     }
 
 @router.put("/api/financial-items/templates/{template_id}")
@@ -88,6 +92,7 @@ async def update_template(
         raise HTTPException(status_code=404, detail="Template not found")
 
     db_template.name = template.name
+    db_template.is_deduction = template.is_deduction
     db.commit()
 
     return {"success": True}
