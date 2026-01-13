@@ -12,7 +12,12 @@ from pathlib import Path
 
 def run_migrations():
     """Run all migration scripts found in the migrations directory."""
-    migrations_dir = Path("/app/migrations")
+    # Support both Docker (/app) and local paths
+    if os.path.exists("/app/migrations"):
+        migrations_dir = Path("/app/migrations")
+    else:
+        migrations_dir = Path(__file__).parent / "migrations"
+
     old_migrations_dir = migrations_dir / "old"
 
     # Ensure the old migrations directory exists
