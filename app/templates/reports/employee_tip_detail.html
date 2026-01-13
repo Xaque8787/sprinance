@@ -152,6 +152,38 @@
             </div>
         </div>
 
+        <div class="form-group" style="margin-top: 1.5rem;">
+            <label>
+                <input type="checkbox" id="export_download_copy">
+                <strong>Download local copy</strong>
+            </label>
+        </div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+            <label>
+                <input type="checkbox" id="export_send_email" onchange="toggleExportEmailSection()">
+                <strong>Send via email</strong>
+            </label>
+        </div>
+
+        <div id="export_email_section" style="display: none; margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+            <div id="email_loading" style="display: none; margin-bottom: 1rem;">
+                Loading admin users...
+            </div>
+
+            <div id="email_content" style="display: none;">
+                <div class="form-group">
+                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Select Recipients:</label>
+                    <div id="admin_users_list" style="max-height: 150px; overflow-y: auto; margin-bottom: 1rem;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="export_additional_email" style="font-weight: 600;">Additional Email (Optional):</label>
+                    <input type="email" id="export_additional_email" class="form-control" placeholder="email@example.com">
+                </div>
+            </div>
+        </div>
+
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
             <button class="btn btn-primary" onclick="exportReport()">Export CSV</button>
@@ -413,9 +445,65 @@ function toggleExportType() {
     }
 }
 
-function exportReport() {
+async function toggleExportEmailSection() {
+    const sendEmailChecked = document.getElementById('export_send_email').checked;
+    const emailSection = document.getElementById('export_email_section');
+    const emailLoading = document.getElementById('email_loading');
+    const emailContent = document.getElementById('email_content');
+
+    if (sendEmailChecked) {
+        emailSection.style.display = 'block';
+        emailLoading.style.display = 'block';
+        emailContent.style.display = 'none';
+
+        try {
+            const response = await fetch('/reports/admin-users?report_type=tips');
+            const data = await response.json();
+
+            if (data.success) {
+                const usersList = document.getElementById('admin_users_list');
+                usersList.innerHTML = '';
+
+                data.users.forEach(user => {
+                    const label = document.createElement('label');
+                    label.style.display = 'block';
+                    label.style.marginBottom = '0.5rem';
+                    label.style.cursor = 'pointer';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.name = 'user_emails';
+                    checkbox.value = user.email;
+                    checkbox.checked = user.opt_in;
+                    checkbox.style.marginRight = '0.5rem';
+
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(`${user.username} (${user.email})`));
+
+                    usersList.appendChild(label);
+                });
+
+                emailLoading.style.display = 'none';
+                emailContent.style.display = 'block';
+            }
+        } catch (error) {
+            emailSection.innerHTML = '<p style="color: red;">Error loading admin users. Please try again.</p>';
+        }
+    } else {
+        emailSection.style.display = 'none';
+    }
+}
+
+async function exportReport() {
     const exportType = document.querySelector('input[name="export_type"]:checked').value;
     const employeeSlug = '{{ employee.slug }}';
+    const downloadCopy = document.getElementById('export_download_copy').checked;
+    const sendEmail = document.getElementById('export_send_email').checked;
+
+    if (!downloadCopy && !sendEmail) {
+        alert('Please select at least one option: Download local copy or Send via email');
+        return;
+    }
 
     let startDate, endDate;
 
@@ -446,7 +534,52 @@ function exportReport() {
         }
     }
 
-    window.location.href = `/reports/tip-report/employee/${employeeSlug}/export?start_date=${startDate}&end_date=${endDate}`;
+    // Handle download
+    if (downloadCopy) {
+        window.location.href = `/reports/tip-report/employee/${employeeSlug}/export?start_date=${startDate}&end_date=${endDate}`;
+    }
+
+    // Handle email
+    if (sendEmail) {
+        const checkboxes = document.querySelectorAll('input[name="user_emails"]:checked');
+        const userEmails = Array.from(checkboxes).map(cb => cb.value);
+        const additionalEmail = document.getElementById('export_additional_email').value.trim();
+
+        if (userEmails.length === 0 && !additionalEmail) {
+            alert('Please select at least one recipient or enter an email address');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('start_date', startDate);
+        formData.append('end_date', endDate);
+
+        userEmails.forEach(email => {
+            formData.append('user_emails[]', email);
+        });
+
+        if (additionalEmail) {
+            formData.append('additional_email', additionalEmail);
+        }
+
+        try {
+            const response = await fetch(`/reports/tip-report/employee/${employeeSlug}/email`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Report sent successfully!');
+            } else {
+                alert('Error sending report: ' + result.message);
+            }
+        } catch (error) {
+            alert('Error sending report. Please try again.');
+        }
+    }
+
     closeExportModal();
 }
 
