@@ -3,10 +3,17 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sqlalchemy import create_engine, text, inspect
-from app.database import SQLALCHEMY_DATABASE_URL, Base
+from app.database import Base
 from app.models import FinancialLineItemTemplate
 
 def run_migration():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    db_path = os.path.join(project_root, "data", "database.db")
+
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_path}"
+    print(f"Using database at: {db_path}")
+
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
     inspector = inspect(engine)
 

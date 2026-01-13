@@ -3,9 +3,13 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from sqlalchemy import create_engine, inspect, text
-from app.database import SQLALCHEMY_DATABASE_URL
 
 def verify_and_fix():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(script_dir, "data", "database.db")
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_path}"
+
+    print(f"Database path: {db_path}")
     print(f"Database URL: {SQLALCHEMY_DATABASE_URL}")
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
     inspector = inspect(engine)
