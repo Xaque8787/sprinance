@@ -394,10 +394,14 @@ def send_report_emails(
             "message": f"Invalid report type: {report_type}"
         }
 
-    from_email = os.getenv(
-        "RESEND_FROM_EMAIL_DAILY" if report_type == "daily" else "RESEND_FROM_EMAIL_TIPS",
-        f"{report_type}@reports.pospiros.pizza"
-    )
+    from_email_key = "RESEND_FROM_EMAIL_DAILY" if report_type == "daily" else "RESEND_FROM_EMAIL_TIPS"
+    from_email = os.getenv(from_email_key)
+
+    if not from_email:
+        return {
+            "success": False,
+            "message": f"{from_email_key} is not configured in environment variables"
+        }
 
     if not os.path.exists(report_filepath):
         return {

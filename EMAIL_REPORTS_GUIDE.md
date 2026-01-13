@@ -19,9 +19,14 @@ Add these to your `.env` file:
 
 ```
 RESEND_API_KEY=your_resend_api_key_here
-RESEND_FROM_EMAIL_DAILY=daily@reports.pospiros.pizza
-RESEND_FROM_EMAIL_TIPS=tips@reports.pospiros.pizza
+RESEND_FROM_EMAIL_DAILY=daily@yourdomain.com
+RESEND_FROM_EMAIL_TIPS=tips@yourdomain.com
 ```
+
+**Important:**
+- Replace `yourdomain.com` with your verified domain in Resend
+- All three variables must be configured for email functionality to work
+- The from email addresses must be verified in your Resend account
 
 ### Docker Configuration
 
@@ -136,9 +141,11 @@ The migration `add_user_email_opt_in.py` adds these fields automatically when th
 ## Troubleshooting
 
 ### No Emails Being Sent
-1. Check that `RESEND_API_KEY` is set correctly
-2. Verify the from email addresses are valid
-3. Check that at least one recipient is selected
+1. Check that `RESEND_API_KEY` is set correctly in your `.env` file
+2. Verify `RESEND_FROM_EMAIL_DAILY` and `RESEND_FROM_EMAIL_TIPS` are configured
+3. Ensure the from email addresses are verified in your Resend account
+4. Check that at least one recipient is selected
+5. For Docker deployments, verify the environment variables are passed through in `docker-compose.yml`
 
 ### Users Not Receiving Emails
 1. Verify user has a valid email address in their profile

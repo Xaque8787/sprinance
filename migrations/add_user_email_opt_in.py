@@ -2,7 +2,9 @@ import sqlite3
 import os
 
 def migrate():
-    db_path = os.path.join("data", "database.db")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    db_path = os.path.join(project_root, "data", "database.db")
 
     if not os.path.exists(db_path):
         print("Database not found. Skipping migration.")

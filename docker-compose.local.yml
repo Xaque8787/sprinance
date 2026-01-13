@@ -10,6 +10,9 @@ services:
       - SECRET_KEY=${SECRET_KEY:-local-development-secret-key}
       - DATABASE_URL=sqlite:///app/data/database.db
       - TZ=America/Los_Angeles
+      - RESEND_API_KEY=${RESEND_API_KEY:-}
+      - RESEND_FROM_EMAIL_DAILY=${RESEND_FROM_EMAIL_DAILY:-}
+      - RESEND_FROM_EMAIL_TIPS=${RESEND_FROM_EMAIL_TIPS:-}
     volumes:
       - ./data:/app/data
     restart: unless-stopped
