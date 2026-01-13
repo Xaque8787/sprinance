@@ -337,6 +337,11 @@ const workingEmployeeIds = new Set({{ working_employee_ids | tojson }});
 
 function updateAddEmployeeDropdown() {
     const select = document.getElementById('employee-to-add');
+    if (!select) {
+        console.log('Employee dropdown not found (likely in read-only mode)');
+        return;
+    }
+
     const currentEmployeeIds = new Set();
 
     document.querySelectorAll('.employee-id-input').forEach(input => {
