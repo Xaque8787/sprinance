@@ -13,10 +13,12 @@ class FinancialLineItemTemplateCreate(BaseModel):
     name: str
     category: str
     is_deduction: bool = False
+    is_starting_till: bool = False
 
 class FinancialLineItemTemplateUpdate(BaseModel):
     name: str
     is_deduction: bool = False
+    is_starting_till: bool = False
 
 @router.get("/api/financial-items/templates")
 async def get_templates(
@@ -29,12 +31,12 @@ async def get_templates(
     ).all()
 
     revenue_items = [
-        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default, "is_deduction": t.is_deduction}
+        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default, "is_deduction": t.is_deduction, "is_starting_till": t.is_starting_till}
         for t in templates if t.category == "revenue"
     ]
 
     expense_items = [
-        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default, "is_deduction": t.is_deduction}
+        {"id": t.id, "name": t.name, "display_order": t.display_order, "is_default": t.is_default, "is_deduction": t.is_deduction, "is_starting_till": t.is_starting_till}
         for t in templates if t.category == "expense"
     ]
 
@@ -58,7 +60,8 @@ async def create_template(
         category=template.category,
         display_order=max_order,
         is_default=False,
-        is_deduction=template.is_deduction
+        is_deduction=template.is_deduction,
+        is_starting_till=template.is_starting_till
     )
 
     db.add(new_template)
@@ -71,7 +74,8 @@ async def create_template(
         "category": new_template.category,
         "display_order": new_template.display_order,
         "is_default": new_template.is_default,
-        "is_deduction": new_template.is_deduction
+        "is_deduction": new_template.is_deduction,
+        "is_starting_till": new_template.is_starting_till
     }
 
 @router.put("/api/financial-items/templates/{template_id}")
@@ -93,6 +97,7 @@ async def update_template(
 
     db_template.name = template.name
     db_template.is_deduction = template.is_deduction
+    db_template.is_starting_till = template.is_starting_till
     db.commit()
 
     return {"success": True}

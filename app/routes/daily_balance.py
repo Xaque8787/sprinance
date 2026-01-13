@@ -192,6 +192,22 @@ async def daily_balance_page(
         for item in daily_balance.financial_line_items:
             financial_line_items[f"{item.category}_{item.template_id or item.id}"] = item
 
+    from datetime import timedelta
+    previous_date = target_date - timedelta(days=1)
+    previous_daily_balance = db.query(DailyBalance).filter(DailyBalance.date == previous_date).first()
+
+    previous_expense_total = 0.0
+    if previous_daily_balance:
+        for item in previous_daily_balance.financial_line_items:
+            if item.category == "expense":
+                template = db.query(FinancialLineItemTemplate).filter(
+                    FinancialLineItemTemplate.id == item.template_id
+                ).first()
+                if template and template.is_deduction:
+                    previous_expense_total -= item.value
+                else:
+                    previous_expense_total += item.value
+
     return templates.TemplateResponse(
         "daily_balance/form.html",
         {
@@ -207,7 +223,8 @@ async def daily_balance_page(
             "scheduled_employees": scheduled_employees,
             "edit_mode": edit,
             "financial_templates": templates_list,
-            "financial_line_items": financial_line_items
+            "financial_line_items": financial_line_items,
+            "previous_expense_total": previous_expense_total
         }
     )
 

@@ -102,6 +102,7 @@ class FinancialLineItemTemplate(Base):
     display_order = Column(Integer, default=0)
     is_default = Column(Boolean, default=False)
     is_deduction = Column(Boolean, default=False)
+    is_starting_till = Column(Boolean, default=False)
 
     daily_line_items = relationship("DailyFinancialLineItem", back_populates="template", cascade="all, delete-orphan")
 

@@ -57,12 +57,15 @@
                     <tbody>
                         {% for template in financial_templates %}
                             {% if template.category == 'revenue' %}
-                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}" data-is-deduction="{{ template.is_deduction|lower }}">
+                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}" data-is-deduction="{{ template.is_deduction|lower }}" data-is-starting-till="{{ template.is_starting_till|lower }}">
                             <td>
                                 <span class="item-name-display" id="name-display-{{ template.id }}">
                                     {{ template.name }}
                                     {% if template.is_deduction %}
                                     <span style="color: #dc2626; font-weight: bold;" title="This item subtracts from the total"> (−)</span>
+                                    {% endif %}
+                                    {% if template.is_starting_till %}
+                                    <span style="color: #2563eb; font-weight: bold;" title="Auto-populated from previous day"> (⟲)</span>
                                     {% endif %}
                                 </span>
                                 <input type="text" class="item-name-edit" id="name-edit-{{ template.id }}" value="{{ template.name }}" style="display: none;">
@@ -83,6 +86,10 @@
                                     <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
                                         <input type="checkbox" onchange="toggleDeduction({{ template.id }}, 'revenue', this.checked)" {% if template.is_deduction %}checked{% endif %} title="Mark as deduction">
                                         <span style="font-size: 12px;">Deduction</span>
+                                    </label>
+                                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                                        <input type="checkbox" onchange="toggleStartingTill({{ template.id }}, 'revenue', this.checked)" {% if template.is_starting_till %}checked{% endif %} title="Auto-populate from previous day">
+                                        <span style="font-size: 12px;">Starting Till</span>
                                     </label>
                                 </span>
                                 {% endif %}
@@ -134,12 +141,15 @@
                     <tbody>
                         {% for template in financial_templates %}
                             {% if template.category == 'expense' %}
-                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}" data-is-deduction="{{ template.is_deduction|lower }}">
+                        <tr data-template-id="{{ template.id }}" data-template-name="{{ template.name }}" data-is-deduction="{{ template.is_deduction|lower }}" data-is-starting-till="{{ template.is_starting_till|lower }}">
                             <td>
                                 <span class="item-name-display" id="name-display-{{ template.id }}">
                                     {{ template.name }}
                                     {% if template.is_deduction %}
                                     <span style="color: #dc2626; font-weight: bold;" title="This item subtracts from the total"> (−)</span>
+                                    {% endif %}
+                                    {% if template.is_starting_till %}
+                                    <span style="color: #2563eb; font-weight: bold;" title="Auto-populated from previous day"> (⟲)</span>
                                     {% endif %}
                                 </span>
                                 <input type="text" class="item-name-edit" id="name-edit-{{ template.id }}" value="{{ template.name }}" style="display: none;">
@@ -160,6 +170,10 @@
                                     <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
                                         <input type="checkbox" onchange="toggleDeduction({{ template.id }}, 'expense', this.checked)" {% if template.is_deduction %}checked{% endif %} title="Mark as deduction">
                                         <span style="font-size: 12px;">Deduction</span>
+                                    </label>
+                                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                                        <input type="checkbox" onchange="toggleStartingTill({{ template.id }}, 'expense', this.checked)" {% if template.is_starting_till %}checked{% endif %} title="Auto-populate from previous day">
+                                        <span style="font-size: 12px;">Starting Till</span>
                                     </label>
                                 </span>
                                 {% endif %}
@@ -818,6 +832,7 @@ async function toggleDeduction(templateId, category, isDeduction) {
     const tableId = category === 'revenue' ? 'revenue-table' : 'expense-table';
     const row = document.querySelector(`#${tableId} tr[data-template-id="${templateId}"]`);
     const templateName = row.dataset.templateName;
+    const isStartingTill = row.dataset.isStartingTill === 'true';
 
     try {
         const response = await fetch(`/api/financial-items/templates/${templateId}`, {
@@ -827,7 +842,8 @@ async function toggleDeduction(templateId, category, isDeduction) {
             },
             body: JSON.stringify({
                 name: templateName,
-                is_deduction: isDeduction
+                is_deduction: isDeduction,
+                is_starting_till: isStartingTill
             })
         });
 
@@ -859,6 +875,62 @@ async function toggleDeduction(templateId, category, isDeduction) {
         const checkbox = row.querySelector('input[type="checkbox"]');
         if (checkbox) {
             checkbox.checked = !isDeduction;
+        }
+    }
+}
+
+async function toggleStartingTill(templateId, category, isStartingTill) {
+    const tableId = category === 'revenue' ? 'revenue-table' : 'expense-table';
+    const row = document.querySelector(`#${tableId} tr[data-template-id="${templateId}"]`);
+    const templateName = row.dataset.templateName;
+    const isDeduction = row.dataset.isDeduction === 'true';
+
+    try {
+        const response = await fetch(`/api/financial-items/templates/${templateId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: templateName,
+                is_deduction: isDeduction,
+                is_starting_till: isStartingTill
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update starting till status');
+        }
+
+        row.dataset.isStartingTill = isStartingTill;
+
+        const nameDisplay = row.querySelector(`#name-display-${templateId}`);
+        const existingStartingTillIndicator = nameDisplay.querySelector('span[title="Auto-populated from previous day"]');
+
+        if (isStartingTill && !existingStartingTillIndicator) {
+            const indicator = document.createElement('span');
+            indicator.style.color = '#2563eb';
+            indicator.style.fontWeight = 'bold';
+            indicator.title = 'Auto-populated from previous day';
+            indicator.textContent = ' (⟲)';
+            nameDisplay.appendChild(indicator);
+
+            const input = row.querySelector('input[type="number"]');
+            if (input && !input.value || parseFloat(input.value) === 0) {
+                const previousTotal = parseFloat('{{ previous_expense_total }}') || 0;
+                input.value = previousTotal.toFixed(2);
+                calculateFinancialTotals();
+            }
+        } else if (!isStartingTill && existingStartingTillIndicator) {
+            existingStartingTillIndicator.remove();
+        }
+
+    } catch (error) {
+        console.error('Error toggling starting till:', error);
+        alert('Failed to update starting till status. Please try again.');
+        const checkbox = row.querySelectorAll('input[type="checkbox"]')[1];
+        if (checkbox) {
+            checkbox.checked = !isStartingTill;
         }
     }
 }
@@ -997,6 +1069,18 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.employee-entry').forEach(entry => {
         attachEmployeeInputListeners(entry);
     });
+
+    const previousExpenseTotal = parseFloat('{{ previous_expense_total }}') || 0;
+    const hasDailyBalance = {{ 'true' if daily_balance else 'false' }};
+
+    if (!hasDailyBalance && previousExpenseTotal > 0) {
+        document.querySelectorAll('#revenue-table tr[data-is-starting-till="true"], #expense-table tr[data-is-starting-till="true"]').forEach(row => {
+            const input = row.querySelector('input[type="number"]');
+            if (input) {
+                input.value = previousExpenseTotal.toFixed(2);
+            }
+        });
+    }
 
     console.log('=== Calling calculateFinancialTotals on page load ===');
     calculateFinancialTotals();
