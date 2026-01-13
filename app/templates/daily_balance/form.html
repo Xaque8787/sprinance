@@ -240,6 +240,18 @@
                     <span>Mark as deduction (subtracts from total)</span>
                 </label>
             </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="new-item-is-starting-till">
+                    <span>Starting Till (auto-populate from previous day)</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="new-item-is-ending-till">
+                    <span>Ending Till (used for next day's starting till)</span>
+                </label>
+            </div>
             <button type="button" class="btn btn-primary btn-sm" onclick="addFinancialTemplate()">Add Item</button>
             <button type="button" class="btn btn-secondary btn-sm" onclick="closeManageModal()">Close</button>
         </div>
@@ -628,6 +640,9 @@ function toggleManagementMode(category) {
         currentManageCategory = category;
         title.textContent = category === 'revenue' ? 'Add Revenue & Income Item' : 'Add Deposits & Expenses Item';
         document.getElementById('new-item-name').value = '';
+        document.getElementById('new-item-is-deduction').checked = false;
+        document.getElementById('new-item-is-starting-till').checked = false;
+        document.getElementById('new-item-is-ending-till').checked = false;
         modal.style.display = 'block';
     } else {
         controls.forEach(control => control.style.display = 'none');
@@ -645,8 +660,12 @@ function closeManageModal() {
 async function addFinancialTemplate() {
     const nameInput = document.getElementById('new-item-name');
     const isDeductionInput = document.getElementById('new-item-is-deduction');
+    const isStartingTillInput = document.getElementById('new-item-is-starting-till');
+    const isEndingTillInput = document.getElementById('new-item-is-ending-till');
     const name = nameInput.value.trim();
     const isDeduction = isDeductionInput.checked;
+    const isStartingTill = isStartingTillInput.checked;
+    const isEndingTill = isEndingTillInput.checked;
 
     if (!name) {
         alert('Please enter an item name');
@@ -662,7 +681,9 @@ async function addFinancialTemplate() {
             body: JSON.stringify({
                 name: name,
                 category: currentManageCategory,
-                is_deduction: isDeduction
+                is_deduction: isDeduction,
+                is_starting_till: isStartingTill,
+                is_ending_till: isEndingTill
             })
         });
 
@@ -681,11 +702,15 @@ async function addFinancialTemplate() {
         newRow.dataset.templateId = newTemplate.id;
         newRow.dataset.templateName = newTemplate.name;
         newRow.dataset.isDeduction = newTemplate.is_deduction;
+        newRow.dataset.isStartingTill = newTemplate.is_starting_till;
+        newRow.dataset.isEndingTill = newTemplate.is_ending_till;
         newRow.innerHTML = `
             <td>
                 <span class="item-name-display" id="name-display-${newTemplate.id}">
                     ${newTemplate.name}
                     ${newTemplate.is_deduction ? '<span style="color: #dc2626; font-weight: bold;" title="This item subtracts from the total"> (−)</span>' : ''}
+                    ${newTemplate.is_starting_till ? '<span style="color: #2563eb; font-weight: bold;" title="Auto-populated from previous day"> (⟲)</span>' : ''}
+                    ${newTemplate.is_ending_till ? '<span style="color: #059669; font-weight: bold;" title="Ending till for next day"> (⤵)</span>' : ''}
                 </span>
                 <input type="text" class="item-name-edit" id="name-edit-${newTemplate.id}" value="${newTemplate.name}" style="display: none;">
                 <span class="item-management-controls" style="display: ${isManagementModeActive[currentManageCategory] ? 'inline' : 'none'};">
@@ -705,6 +730,14 @@ async function addFinancialTemplate() {
                         <input type="checkbox" onchange="toggleDeduction(${newTemplate.id}, '${currentManageCategory}', this.checked)" ${newTemplate.is_deduction ? 'checked' : ''} title="Mark as deduction">
                         <span style="font-size: 12px;">Deduction</span>
                     </label>
+                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                        <input type="checkbox" onchange="toggleStartingTill(${newTemplate.id}, '${currentManageCategory}', this.checked)" ${newTemplate.is_starting_till ? 'checked' : ''} title="Auto-populate from previous day">
+                        <span style="font-size: 12px;">Starting Till</span>
+                    </label>
+                    <label style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                        <input type="checkbox" onchange="toggleEndingTill(${newTemplate.id}, '${currentManageCategory}', this.checked)" ${newTemplate.is_ending_till ? 'checked' : ''} title="Ending till for next day">
+                        <span style="font-size: 12px;">Ending Till</span>
+                    </label>
                 </span>
             </td>
             <td>
@@ -722,6 +755,8 @@ async function addFinancialTemplate() {
 
         nameInput.value = '';
         isDeductionInput.checked = false;
+        isStartingTillInput.checked = false;
+        isEndingTillInput.checked = false;
         calculateFinancialTotals();
 
         alert('Item added successfully! It will appear on all future days.');
