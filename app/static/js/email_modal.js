@@ -74,7 +74,7 @@ class EmailModal {
         if (additionalEmailCheckbox) additionalEmailCheckbox.checked = false;
 
         const additionalEmailContainer = document.getElementById('additional_email_container');
-        if (additional EmailContainer) additionalEmailContainer.style.display = 'none';
+        if (additionalEmailContainer) additionalEmailContainer.style.display = 'none';
 
         this.emailContext = {
             type: null,

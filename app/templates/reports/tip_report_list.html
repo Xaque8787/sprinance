@@ -132,6 +132,35 @@
             </div>
         </div>
 
+        <div class="form-group" style="margin-top: 1.5rem;">
+            <label>
+                <input type="checkbox" id="export_send_email" onchange="toggleExportEmailSection()">
+                <strong>Send report via email</strong>
+            </label>
+        </div>
+
+        <div id="export-email-section" style="display: none;">
+            <div class="email-recipients-section">
+                <h4>Email Recipients</h4>
+                <div id="export-admin-users-list" class="users-list">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label>
+                    <input type="checkbox" id="export_additional_email_checkbox" onchange="toggleExportAdditionalEmail()">
+                    Send to additional email address
+                </label>
+            </div>
+
+            <div id="export_additional_email_container" style="display: none; margin-top: 0.5rem;">
+                <input type="email"
+                       id="export_additional_email_input"
+                       placeholder="email@example.com"
+                       class="form-control">
+            </div>
+        </div>
+
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
             <button class="btn btn-primary" onclick="exportReport()">Export CSV</button>
@@ -369,6 +398,45 @@
     gap: 1rem;
     margin-top: 2rem;
 }
+
+.email-recipients-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.email-recipients-section h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    color: #2c3e50;
+}
+
+.users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.user-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.user-checkbox-label:hover {
+    background: #e9ecef;
+}
+
+.user-checkbox-label input[type="checkbox"] {
+    cursor: pointer;
+}
 </style>
 
 <script>
@@ -377,7 +445,49 @@ const year = today.getFullYear();
 const month = String(today.getMonth() + 1).padStart(2, '0');
 document.getElementById('export_month').value = `${year}-${month}`;
 
+let exportAdminUsers = [];
+
+async function loadExportAdminUsers() {
+    try {
+        const response = await fetch('/reports/api/admin-users?report_type=tips');
+        const result = await response.json();
+        if (result.success) {
+            exportAdminUsers = result.users;
+            renderExportUserList();
+        }
+    } catch (error) {
+        console.error('Failed to load admin users:', error);
+    }
+}
+
+function renderExportUserList() {
+    const container = document.getElementById('export-admin-users-list');
+    if (!container) return;
+
+    if (exportAdminUsers.length === 0) {
+        container.innerHTML = '<p style="color: #666; font-style: italic;">No admin users with emails found.</p>';
+        return;
+    }
+
+    let html = '';
+    exportAdminUsers.forEach(user => {
+        html += `
+            <label class="user-checkbox-label">
+                <input type="checkbox"
+                       name="export_user_email"
+                       value="${user.email}"
+                       data-user-id="${user.id}"
+                       ${user.opt_in ? 'checked' : ''}>
+                <span>${user.username} (${user.email})</span>
+            </label>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
 function openExportModal() {
+    loadExportAdminUsers();
     const modal = document.getElementById('export-modal');
     modal.classList.add('active');
 }
@@ -385,6 +495,8 @@ function openExportModal() {
 function closeExportModal() {
     const modal = document.getElementById('export-modal');
     modal.classList.remove('active');
+    document.getElementById('export_send_email').checked = false;
+    document.getElementById('export-email-section').style.display = 'none';
 }
 
 function toggleExportType() {
@@ -401,7 +513,24 @@ function toggleExportType() {
     }
 }
 
-function exportReport() {
+function toggleExportEmailSection() {
+    const checkbox = document.getElementById('export_send_email');
+    const section = document.getElementById('export-email-section');
+    section.style.display = checkbox.checked ? 'block' : 'none';
+}
+
+function toggleExportAdditionalEmail() {
+    const checkbox = document.getElementById('export_additional_email_checkbox');
+    const container = document.getElementById('export_additional_email_container');
+    if (checkbox.checked) {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+        document.getElementById('export_additional_email_input').value = '';
+    }
+}
+
+async function exportReport() {
     const exportType = document.querySelector('input[name="export_type"]:checked').value;
 
     let startDate, endDate;
@@ -430,6 +559,47 @@ function exportReport() {
         if (new Date(startDate) > new Date(endDate)) {
             alert('Start date must be before end date');
             return;
+        }
+    }
+
+    const sendEmail = document.getElementById('export_send_email').checked;
+
+    if (sendEmail) {
+        const selectedEmails = [];
+        const checkboxes = document.querySelectorAll('input[name="export_user_email"]:checked');
+        checkboxes.forEach(cb => selectedEmails.push(cb.value));
+
+        const additionalEmailCheckbox = document.getElementById('export_additional_email_checkbox');
+        const additionalEmailInput = document.getElementById('export_additional_email_input');
+
+        if (additionalEmailCheckbox && additionalEmailCheckbox.checked) {
+            const additionalEmail = additionalEmailInput.value.trim();
+            if (additionalEmail) {
+                selectedEmails.push(additionalEmail);
+            }
+        }
+
+        if (selectedEmails.length > 0) {
+            const emailFormData = new FormData();
+            selectedEmails.forEach(email => emailFormData.append('user_emails[]', email));
+            emailFormData.append('start_date', startDate);
+            emailFormData.append('end_date', endDate);
+
+            try {
+                const response = await fetch('/reports/tip-report/email', {
+                    method: 'POST',
+                    body: emailFormData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message);
+                } else {
+                    alert(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                alert(`Failed to send emails: ${error.message}`);
+            }
         }
     }
 
