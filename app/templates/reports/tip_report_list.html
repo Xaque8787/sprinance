@@ -134,6 +134,13 @@
 
         <div class="form-group" style="margin-top: 1.5rem;">
             <label>
+                <input type="checkbox" id="export_download_copy" checked>
+                <strong>Download local copy</strong>
+            </label>
+        </div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+            <label>
                 <input type="checkbox" id="export_send_email" onchange="toggleExportEmailSection()">
                 <strong>Send report via email</strong>
             </label>
@@ -163,7 +170,7 @@
 
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="exportReport()">Export CSV</button>
+            <button class="btn btn-primary" onclick="exportReport()">Generate Report</button>
         </div>
     </div>
 </div>
@@ -563,48 +570,63 @@ async function exportReport() {
     }
 
     const sendEmail = document.getElementById('export_send_email').checked;
+    const downloadCopy = document.getElementById('export_download_copy').checked;
 
-    if (sendEmail) {
-        const selectedEmails = [];
-        const checkboxes = document.querySelectorAll('input[name="export_user_email"]:checked');
-        checkboxes.forEach(cb => selectedEmails.push(cb.value));
+    try {
+        if (!downloadCopy) {
+            const generateResponse = await fetch(`/reports/tip-report/export?start_date=${startDate}&end_date=${endDate}`);
 
-        const additionalEmailCheckbox = document.getElementById('export_additional_email_checkbox');
-        const additionalEmailInput = document.getElementById('export_additional_email_input');
-
-        if (additionalEmailCheckbox && additionalEmailCheckbox.checked) {
-            const additionalEmail = additionalEmailInput.value.trim();
-            if (additionalEmail) {
-                selectedEmails.push(additionalEmail);
+            if (!generateResponse.ok) {
+                alert('Failed to generate report. Please try again.');
+                return;
             }
         }
 
-        if (selectedEmails.length > 0) {
-            const emailFormData = new FormData();
-            selectedEmails.forEach(email => emailFormData.append('user_emails[]', email));
-            emailFormData.append('start_date', startDate);
-            emailFormData.append('end_date', endDate);
+        if (sendEmail) {
+            const selectedEmails = [];
+            const checkboxes = document.querySelectorAll('input[name="export_user_email"]:checked');
+            checkboxes.forEach(cb => selectedEmails.push(cb.value));
 
-            try {
-                const response = await fetch('/reports/tip-report/email', {
+            const additionalEmailCheckbox = document.getElementById('export_additional_email_checkbox');
+            const additionalEmailInput = document.getElementById('export_additional_email_input');
+
+            if (additionalEmailCheckbox && additionalEmailCheckbox.checked) {
+                const additionalEmail = additionalEmailInput.value.trim();
+                if (additionalEmail) {
+                    selectedEmails.push(additionalEmail);
+                }
+            }
+
+            if (selectedEmails.length > 0) {
+                const emailFormData = new FormData();
+                selectedEmails.forEach(email => emailFormData.append('user_emails[]', email));
+                emailFormData.append('start_date', startDate);
+                emailFormData.append('end_date', endDate);
+
+                const emailResponse = await fetch('/reports/tip-report/email', {
                     method: 'POST',
                     body: emailFormData
                 });
 
-                const result = await response.json();
+                const result = await emailResponse.json();
                 if (result.success) {
                     alert(result.message);
                 } else {
                     alert(`Error: ${result.message}`);
                 }
-            } catch (error) {
-                alert(`Failed to send emails: ${error.message}`);
             }
         }
-    }
 
-    window.location.href = `/reports/tip-report/export?start_date=${startDate}&end_date=${endDate}`;
-    closeExportModal();
+        if (downloadCopy) {
+            window.location.href = `/reports/tip-report/export?start_date=${startDate}&end_date=${endDate}`;
+        } else {
+            alert('Report generated successfully!');
+        }
+
+        closeExportModal();
+    } catch (error) {
+        alert(`Failed to generate report: ${error.message}`);
+    }
 }
 
 window.onclick = function(event) {
