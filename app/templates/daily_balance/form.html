@@ -516,11 +516,14 @@ function attachEmployeeInputListeners(container) {
 }
 
 function calculateFinancialTotals() {
+    console.log('=== calculateFinancialTotals called ===');
     const table1Rows = document.querySelectorAll('#revenue-table tbody tr:not(.total-row)');
+    console.log('Revenue rows found:', table1Rows.length);
     let table1Total = 0;
 
-    table1Rows.forEach(row => {
+    table1Rows.forEach((row, index) => {
         const field = row.querySelector('.table1-field');
+        console.log(`Row ${index}:`, field ? `value=${field.value}, isDeduction=${row.dataset.isDeduction}` : 'NO FIELD FOUND');
         if (field) {
             const value = parseFloat(field.value) || 0;
             const isDeduction = row.dataset.isDeduction === 'true';
@@ -532,13 +535,16 @@ function calculateFinancialTotals() {
         }
     });
 
+    console.log('Revenue total calculated:', table1Total);
     document.getElementById('table1_total').value = table1Total.toFixed(2);
 
     const table2Rows = document.querySelectorAll('#expense-table tbody tr:not(.total-row):not(.highlight-row)');
+    console.log('Expense rows found:', table2Rows.length);
     let table2Total = 0;
 
-    table2Rows.forEach(row => {
+    table2Rows.forEach((row, index) => {
         const field = row.querySelector('.table2-field');
+        console.log(`Expense row ${index}:`, field ? `value=${field.value}, isDeduction=${row.dataset.isDeduction}` : 'NO FIELD FOUND');
         if (field) {
             const value = parseFloat(field.value) || 0;
             const isDeduction = row.dataset.isDeduction === 'true';
@@ -550,6 +556,7 @@ function calculateFinancialTotals() {
         }
     });
 
+    console.log('Expense total calculated:', table2Total);
     document.getElementById('table2_total').value = table2Total.toFixed(2);
 
     const cashOverUnder = table2Total - table1Total;
@@ -975,6 +982,7 @@ async function submitFinalize() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== Page loaded, initializing ===');
     updateAddEmployeeDropdown();
 
     document.querySelectorAll('.table1-field, .table2-field').forEach(field => {
@@ -985,6 +993,7 @@ document.addEventListener('DOMContentLoaded', function() {
         attachEmployeeInputListeners(entry);
     });
 
+    console.log('=== Calling calculateFinancialTotals on page load ===');
     calculateFinancialTotals();
 
     document.querySelectorAll('.employee-entry').forEach(entry => {
