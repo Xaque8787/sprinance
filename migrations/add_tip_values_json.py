@@ -18,25 +18,21 @@ from app.database import SessionLocal
 def run_migration():
     db = SessionLocal()
     try:
-        check_query = text("""
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_name = 'daily_employee_entries'
-            AND column_name = 'tip_values'
-        """)
-        result = db.execute(check_query).fetchone()
-
-        if not result:
+        # Check if column exists by trying to query it
+        try:
+            check_query = text("SELECT tip_values FROM daily_employee_entries LIMIT 1")
+            db.execute(check_query)
+            print("Column tip_values already exists, skipping")
+        except Exception:
+            # Column doesn't exist, add it
             alter_query = text("""
                 ALTER TABLE daily_employee_entries
-                ADD COLUMN tip_values JSON DEFAULT '{}'
+                ADD COLUMN tip_values TEXT DEFAULT '{}'
             """)
             db.execute(alter_query)
+            db.commit()
             print("Added tip_values JSON column to daily_employee_entries")
-        else:
-            print("Column tip_values already exists, skipping")
 
-        db.commit()
         print("Migration completed successfully")
 
     except Exception as e:
