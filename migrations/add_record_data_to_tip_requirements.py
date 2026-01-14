@@ -5,13 +5,26 @@ This migration adds a new boolean column 'record_data' to the tip_entry_requirem
 This attribute allows data to be entered and recorded in the field without being added to
 the "is Total" calculated entries.
 
+Database Location:
+- Docker: /app/data/database.db
+- Bare metal: <project_root>/data/database.db
+
 Usage:
     python migrations/add_record_data_to_tip_requirements.py
 """
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+
+if os.path.exists("/app"):
+    os.chdir("/app")
+else:
+    os.chdir(project_root)
+
+sys.path.insert(0, project_root)
 
 from sqlalchemy import inspect, text
 from app.database import engine
