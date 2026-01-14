@@ -111,6 +111,34 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
         </div>
         '''
 
+    if report_data.get('payroll_summary'):
+        html += '<h2>Payroll Summary</h2>'
+
+        if report_data.get('is_employee_specific'):
+            for payroll_entry in report_data['payroll_summary']:
+                html += '<table class="summary-table"><tbody>'
+                for field in payroll_entry.get('fields', []):
+                    html += f'<tr><td><strong>{field.get("name", "")}</strong></td><td class="text-right">{field.get("value", "")}</td></tr>'
+                html += '</tbody></table>'
+        else:
+            if report_data['payroll_summary']:
+                first_entry = report_data['payroll_summary'][0]
+                html += '<table class="summary-table"><thead><tr>'
+                html += '<th>Employee Name</th><th>Position</th>'
+                for field in first_entry.get('fields', []):
+                    html += f'<th>{field.get("name", "")}</th>'
+                html += '</tr></thead><tbody>'
+
+                for entry in report_data['payroll_summary']:
+                    html += '<tr>'
+                    html += f'<td>{entry.get("employee_name", "")}</td>'
+                    html += f'<td>{entry.get("position", "")}</td>'
+                    for field in entry.get('fields', []):
+                        html += f'<td class="text-right">{field.get("value", "")}</td>'
+                    html += '</tr>'
+
+                html += '</tbody></table>'
+
     if report_data.get('summary'):
         html += '<h2>Summary</h2>'
         html += '<table class="summary-table"><thead><tr>'
