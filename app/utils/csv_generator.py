@@ -112,7 +112,7 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date) -> st
         writer.writerow([])
 
         payroll_summary_data = []
-        payroll_fields = []
+        payroll_reqs_map = {}  # Maps field_name to requirement name
 
         for employee in employees:
             entries = db.query(DailyEmployeeEntry).filter(
@@ -130,8 +130,8 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date) -> st
                     emp_data = {"employee": employee.display_name, "position": employee.position.name}
 
                     for req in payroll_reqs:
-                        if req.field_name not in payroll_fields:
-                            payroll_fields.append(req.field_name)
+                        if req.field_name not in payroll_reqs_map:
+                            payroll_reqs_map[req.field_name] = req.name
 
                         total = 0
                         for entry in entries:
@@ -142,12 +142,12 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date) -> st
                     payroll_summary_data.append(emp_data)
 
         if payroll_summary_data:
-            header_row = ["Employee Name", "Position"] + payroll_fields
+            header_row = ["Employee Name", "Position"] + [payroll_reqs_map[field] for field in payroll_reqs_map.keys()]
             writer.writerow(header_row)
 
             for emp_data in payroll_summary_data:
                 row = [emp_data["employee"], emp_data["position"]]
-                for field in payroll_fields:
+                for field in payroll_reqs_map.keys():
                     value = emp_data.get(field, 0)
                     row.append(f"${value:.2f}")
                 writer.writerow(row)
