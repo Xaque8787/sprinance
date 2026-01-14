@@ -307,6 +307,54 @@ async def employee_tip_report(
         }
     )
 
+@router.post("/reports/tip-report/employee/{employee_slug}/generate")
+async def generate_employee_tip_report_endpoint(
+    employee_slug: str,
+    start_date: str = Form(...),
+    end_date: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Unauthorized"}
+        )
+
+    employee = db.query(Employee).filter(Employee.slug == employee_slug).first()
+    if not employee:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "Employee not found"}
+        )
+
+    try:
+        start_date_obj = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date_obj = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": "Invalid date format"}
+        )
+
+    filename = generate_employee_tip_report_csv(db, employee, start_date_obj, end_date_obj)
+    filepath = os.path.join("data/reports/tip_report", filename)
+
+    if not os.path.exists(filepath):
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": "Failed to generate report"}
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "success": True,
+            "message": "Report generated successfully",
+            "filename": filename
+        }
+    )
+
 @router.get("/reports/tip-report/employee/{employee_slug}/export")
 async def export_employee_tip_report(
     employee_slug: str,

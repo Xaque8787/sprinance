@@ -115,7 +115,7 @@
 <div id="export-modal" class="modal">
     <div class="modal-content">
         <h3>Export {{ employee.display_name }}'s Tip Report</h3>
-        <p>Select a date range to export a tip report for {{ employee.display_name }}.</p>
+        <p>Select a date range to generate a tip report for {{ employee.display_name }}. The report will be saved and can be viewed in the Recent Reports section.</p>
 
         <div class="export-options">
             <div class="form-group">
@@ -155,14 +155,14 @@
         <div class="form-group" style="margin-top: 1.5rem;">
             <label>
                 <input type="checkbox" id="export_download_copy">
-                <strong>Download local copy</strong>
+                <strong>Download local copy (optional)</strong>
             </label>
         </div>
 
         <div class="form-group" style="margin-top: 1rem;">
             <label>
                 <input type="checkbox" id="export_send_email" onchange="toggleExportEmailSection()">
-                <strong>Send via email</strong>
+                <strong>Send via email (optional)</strong>
             </label>
         </div>
 
@@ -186,7 +186,7 @@
 
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="exportReport()">Export CSV</button>
+            <button class="btn btn-primary" onclick="exportReport()">Generate Report</button>
         </div>
     </div>
 </div>
@@ -500,11 +500,6 @@ async function exportReport() {
     const downloadCopy = document.getElementById('export_download_copy').checked;
     const sendEmail = document.getElementById('export_send_email').checked;
 
-    if (!downloadCopy && !sendEmail) {
-        alert('Please select at least one option: Download local copy or Send via email');
-        return;
-    }
-
     let startDate, endDate;
 
     if (exportType === 'month') {
@@ -534,50 +529,71 @@ async function exportReport() {
         }
     }
 
-    // Handle download
-    if (downloadCopy) {
-        window.location.href = `/reports/tip-report/employee/${employeeSlug}/export?start_date=${startDate}&end_date=${endDate}`;
-    }
+    // Always generate and save the report first
+    try {
+        const generateFormData = new FormData();
+        generateFormData.append('start_date', startDate);
+        generateFormData.append('end_date', endDate);
 
-    // Handle email
-    if (sendEmail) {
-        const checkboxes = document.querySelectorAll('input[name="user_emails"]:checked');
-        const userEmails = Array.from(checkboxes).map(cb => cb.value);
-        const additionalEmail = document.getElementById('export_additional_email').value.trim();
+        const generateResponse = await fetch(`/reports/tip-report/employee/${employeeSlug}/generate`, {
+            method: 'POST',
+            body: generateFormData
+        });
 
-        if (userEmails.length === 0 && !additionalEmail) {
-            alert('Please select at least one recipient or enter an email address');
+        const generateResult = await generateResponse.json();
+
+        if (!generateResult.success) {
+            alert('Error generating report: ' + generateResult.message);
             return;
         }
 
-        const formData = new FormData();
-        formData.append('start_date', startDate);
-        formData.append('end_date', endDate);
-
-        userEmails.forEach(email => {
-            formData.append('user_emails[]', email);
-        });
-
-        if (additionalEmail) {
-            formData.append('additional_email', additionalEmail);
+        // Handle download
+        if (downloadCopy) {
+            window.location.href = `/reports/tip-report/employee/${employeeSlug}/export?start_date=${startDate}&end_date=${endDate}`;
         }
 
-        try {
-            const response = await fetch(`/reports/tip-report/employee/${employeeSlug}/email`, {
-                method: 'POST',
-                body: formData
+        // Handle email
+        if (sendEmail) {
+            const checkboxes = document.querySelectorAll('input[name="user_emails"]:checked');
+            const userEmails = Array.from(checkboxes).map(cb => cb.value);
+            const additionalEmail = document.getElementById('export_additional_email').value.trim();
+
+            if (userEmails.length === 0 && !additionalEmail) {
+                alert('Please select at least one recipient or enter an email address');
+                return;
+            }
+
+            const emailFormData = new FormData();
+            emailFormData.append('start_date', startDate);
+            emailFormData.append('end_date', endDate);
+
+            userEmails.forEach(email => {
+                emailFormData.append('user_emails[]', email);
             });
 
-            const result = await response.json();
-
-            if (result.success) {
-                alert('Report sent successfully!');
-            } else {
-                alert('Error sending report: ' + result.message);
+            if (additionalEmail) {
+                emailFormData.append('additional_email', additionalEmail);
             }
-        } catch (error) {
-            alert('Error sending report. Please try again.');
+
+            const emailResponse = await fetch(`/reports/tip-report/employee/${employeeSlug}/email`, {
+                method: 'POST',
+                body: emailFormData
+            });
+
+            const emailResult = await emailResponse.json();
+
+            if (emailResult.success) {
+                alert('Report generated and sent successfully! You can view it in the Recent Reports section.');
+            } else {
+                alert('Report generated successfully, but there was an error sending the email: ' + emailResult.message);
+            }
+        } else if (!downloadCopy) {
+            // No download or email, just show success message
+            alert('Report generated successfully! You can view it in the Recent Reports section on the Tip Reports page.');
         }
+    } catch (error) {
+        alert('Error generating report. Please try again.');
+        console.error('Export error:', error);
     }
 
     closeExportModal();
