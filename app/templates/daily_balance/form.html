@@ -311,6 +311,7 @@
                                    data-employee-id="{{ emp.id }}"
                                    data-field-name="{{ req.field_name }}"
                                    data-is-deduction="{{ req.is_deduction|lower }}"
+                                   data-record-data="{{ req.record_data|lower }}"
                                    data-apply-to-revenue="{{ req.apply_to_revenue|lower }}"
                                    data-revenue-is-deduction="{{ req.revenue_is_deduction|lower }}"
                                    data-apply-to-expense="{{ req.apply_to_expense|lower }}"
@@ -468,6 +469,7 @@ function addEmployeeEntry(emp) {
                                data-employee-id="${emp.id}"
                                data-field-name="${req.field_name}"
                                data-is-deduction="${req.is_deduction}"
+                               data-record-data="${req.record_data}"
                                data-apply-to-revenue="${req.apply_to_revenue}"
                                data-revenue-is-deduction="${req.revenue_is_deduction}"
                                data-apply-to-expense="${req.apply_to_expense}"
@@ -529,11 +531,14 @@ function calculateEmployeeTipTotals(employeeId) {
         tipInputs.forEach(input => {
             const value = parseFloat(input.value || 0);
             const isDeduction = input.dataset.isDeduction === 'true';
+            const recordData = input.dataset.recordData === 'true';
 
-            if (isDeduction) {
-                total -= value;
-            } else {
-                total += value;
+            if (!recordData) {
+                if (isDeduction) {
+                    total -= value;
+                } else {
+                    total += value;
+                }
             }
         });
 

@@ -114,7 +114,7 @@ def save_daily_balance_data(
             elif req.is_total:
                 total = 0
                 for other_req in employee.position.tip_requirements:
-                    if not other_req.no_input and not other_req.is_total:
+                    if not other_req.no_input and not other_req.is_total and not other_req.record_data:
                         field_key = f"tip_{other_req.field_name}_{emp_id}"
                         value = float(form_data.get(field_key, 0.0))
                         if other_req.is_deduction:
@@ -181,7 +181,8 @@ def serialize_employee(emp, db):
                     "apply_to_revenue": req.apply_to_revenue,
                     "revenue_is_deduction": req.revenue_is_deduction,
                     "apply_to_expense": req.apply_to_expense,
-                    "expense_is_deduction": req.expense_is_deduction
+                    "expense_is_deduction": req.expense_is_deduction,
+                    "record_data": req.record_data
                 } for req in emp.position.tip_requirements
             ]
         }
