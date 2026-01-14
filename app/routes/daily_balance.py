@@ -71,15 +71,66 @@ def save_daily_balance_data(
     max_order = len(financial_templates)
 
     for emp_id in employee_ids:
-        bank_card_sales = float(form_data.get(f"bank_card_sales_{emp_id}", 0.0))
-        bank_card_tips = float(form_data.get(f"bank_card_tips_{emp_id}", 0.0))
-        cash_tips = float(form_data.get(f"cash_tips_{emp_id}", 0.0))
-        total_sales = float(form_data.get(f"total_sales_{emp_id}", 0.0))
-        adjustments = float(form_data.get(f"adjustments_{emp_id}", 0.0))
-        tips_on_paycheck = float(form_data.get(f"tips_on_paycheck_{emp_id}", 0.0))
-        tip_out = float(form_data.get(f"tip_out_{emp_id}", 0.0))
+        employee = db.query(Employee).filter(Employee.id == emp_id).first()
+        if not employee:
+            continue
 
-        calculated_take_home = bank_card_tips + cash_tips + adjustments - tips_on_paycheck - tip_out
+        tip_values = {}
+
+        for req in employee.position.tip_requirements:
+            if not req.no_input and not req.is_total:
+                field_key = f"tip_{req.field_name}_{emp_id}"
+                value = float(form_data.get(field_key, 0.0))
+                tip_values[req.field_name] = value
+
+                if req.apply_to_revenue and value != 0:
+                    max_order += 1
+                    tip_line_item = DailyFinancialLineItem(
+                        daily_balance_id=daily_balance.id,
+                        template_id=None,
+                        name=f"{employee.name} - {req.name}",
+                        category="revenue",
+                        value=value if not req.revenue_is_deduction else -value,
+                        display_order=max_order,
+                        is_employee_tip=True,
+                        employee_id=emp_id
+                    )
+                    db.add(tip_line_item)
+
+                if req.apply_to_expense and value != 0:
+                    max_order += 1
+                    tip_line_item = DailyFinancialLineItem(
+                        daily_balance_id=daily_balance.id,
+                        template_id=None,
+                        name=f"{employee.name} - {req.name}",
+                        category="expense",
+                        value=value if not req.expense_is_deduction else -value,
+                        display_order=max_order,
+                        is_employee_tip=True,
+                        employee_id=emp_id
+                    )
+                    db.add(tip_line_item)
+
+            elif req.is_total:
+                total = 0
+                for other_req in employee.position.tip_requirements:
+                    if not other_req.no_input and not other_req.is_total:
+                        field_key = f"tip_{other_req.field_name}_{emp_id}"
+                        value = float(form_data.get(field_key, 0.0))
+                        if other_req.is_deduction:
+                            total -= value
+                        else:
+                            total += value
+                tip_values[req.field_name] = total
+
+        bank_card_sales = tip_values.get("bank_card_sales", 0.0)
+        bank_card_tips = tip_values.get("bank_card_tips", 0.0)
+        cash_tips = tip_values.get("cash_tips", 0.0)
+        total_sales = tip_values.get("total_sales", 0.0)
+        adjustments = tip_values.get("adjustments", 0.0)
+        tips_on_paycheck = tip_values.get("tips_on_paycheck", 0.0)
+        tip_out = tip_values.get("tip_out", 0.0)
+        calculated_take_home = tip_values.get("calculated_take_home", bank_card_tips + cash_tips + adjustments - tips_on_paycheck - tip_out)
 
         entry = DailyEmployeeEntry(
             daily_balance_id=daily_balance.id,
@@ -91,25 +142,10 @@ def save_daily_balance_data(
             adjustments=adjustments,
             tips_on_paycheck=tips_on_paycheck,
             tip_out=tip_out,
-            calculated_take_home=calculated_take_home
+            calculated_take_home=calculated_take_home,
+            tip_values=tip_values
         )
         db.add(entry)
-
-        if tips_on_paycheck > 0:
-            employee = db.query(Employee).filter(Employee.id == emp_id).first()
-            if employee:
-                max_order += 1
-                tip_line_item = DailyFinancialLineItem(
-                    daily_balance_id=daily_balance.id,
-                    template_id=None,
-                    name=f"{employee.name} - Tips on Paycheck",
-                    category="revenue",
-                    value=tips_on_paycheck,
-                    display_order=max_order,
-                    is_employee_tip=True,
-                    employee_id=emp_id
-                )
-                db.add(tip_line_item)
 
     db.commit()
     db.refresh(daily_balance)
@@ -137,7 +173,15 @@ def serialize_employee(emp, db):
                     "id": req.id,
                     "name": req.name,
                     "field_name": req.field_name,
-                    "display_order": req.display_order
+                    "display_order": req.display_order,
+                    "no_input": req.no_input,
+                    "is_total": req.is_total,
+                    "is_deduction": req.is_deduction,
+                    "no_null_value": req.no_null_value,
+                    "apply_to_revenue": req.apply_to_revenue,
+                    "revenue_is_deduction": req.revenue_is_deduction,
+                    "apply_to_expense": req.apply_to_expense,
+                    "expense_is_deduction": req.expense_is_deduction
                 } for req in emp.position.tip_requirements
             ]
         }
