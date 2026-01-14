@@ -43,6 +43,14 @@ class TipEntryRequirement(Base):
     slug = Column(String, unique=True, index=True, nullable=False)
     field_name = Column(String, unique=True, nullable=False)
     display_order = Column(Integer, default=0)
+    is_total = Column(Boolean, default=False)
+    is_deduction = Column(Boolean, default=False)
+    apply_to_revenue = Column(Boolean, default=False)
+    revenue_is_deduction = Column(Boolean, default=False)
+    apply_to_expense = Column(Boolean, default=False)
+    expense_is_deduction = Column(Boolean, default=False)
+    no_null_value = Column(Boolean, default=False)
+    no_input = Column(Boolean, default=False)
 
     positions = relationship(
         "Position",

@@ -67,6 +67,7 @@
                         <th>Requirement Name</th>
                         <th>Field Name</th>
                         <th>Display Order</th>
+                        <th>Attributes</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -76,6 +77,26 @@
                         <td><strong>{{ req.name }}</strong></td>
                         <td><code>{{ req.field_name }}</code></td>
                         <td>{{ req.display_order }}</td>
+                        <td>
+                            {% if req.is_total %}
+                                <span class="badge badge-info">Total</span>
+                            {% endif %}
+                            {% if req.is_deduction %}
+                                <span class="badge badge-warning">Deduction</span>
+                            {% endif %}
+                            {% if req.no_input %}
+                                <span class="badge badge-secondary">No Input</span>
+                            {% endif %}
+                            {% if req.no_null_value %}
+                                <span class="badge badge-danger">Required</span>
+                            {% endif %}
+                            {% if req.apply_to_revenue %}
+                                <span class="badge badge-success">→ Revenue {% if req.revenue_is_deduction %}(−){% else %}(+){% endif %}</span>
+                            {% endif %}
+                            {% if req.apply_to_expense %}
+                                <span class="badge badge-success">→ Expense {% if req.expense_is_deduction %}(−){% else %}(+){% endif %}</span>
+                            {% endif %}
+                        </td>
                         <td class="actions">
                             <button onclick="openEditModal('{{ req.slug }}', '{{ req.name }}', '{{ req.field_name }}', {{ req.display_order }})" class="btn btn-sm">Edit</button>
                             <form action="/tip-requirements/{{ req.slug }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Delete this requirement? It will be removed from all positions.');">
@@ -101,17 +122,76 @@
             <div class="form-group">
                 <label for="name">Requirement Name:</label>
                 <input type="text" id="name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="field_name">Field Name (technical):</label>
-                <input type="text" id="field_name" name="field_name" required placeholder="e.g., bank_card_sales">
-                <small>Use lowercase with underscores (snake_case)</small>
+                <small>Field name will be auto-generated from this name</small>
             </div>
             <div class="form-group">
                 <label for="display_order">Display Order:</label>
                 <input type="number" id="display_order" name="display_order" value="0" min="0">
                 <small>Lower numbers appear first in forms</small>
             </div>
+
+            <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
+                <strong style="display: block; margin-bottom: 0.5rem;">Behavior Options:</strong>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="is_total" name="is_total" value="true">
+                    <span>Is Total - This is a calculated total field (not editable, auto-calculated)</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="is_deduction" name="is_deduction" value="true">
+                    <span>Is Deduction - Subtract from the total field</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="no_input" name="no_input" value="true">
+                    <span>No Input - Display name only (placeholder/memo, no input field)</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; cursor: pointer;">
+                    <input type="checkbox" id="no_null_value" name="no_null_value" value="true">
+                    <span>Require Value - Must have a positive value above 0</span>
+                </label>
+            </div>
+
+            <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 1rem;">
+                <strong style="display: block; margin-bottom: 0.5rem;">Apply to Financial Tables:</strong>
+
+                <div style="margin-bottom: 1rem; padding: 0.5rem; background: #f5f5f5; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="apply_to_revenue" name="apply_to_revenue" value="true" onchange="toggleRevenueOptions(this.checked)">
+                        <span><strong>Apply to Revenue & Income</strong></span>
+                    </label>
+                    <div id="revenue_options" style="margin-left: 2rem; display: none;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="revenue_addition" name="revenue_type" value="addition" checked>
+                            <span>As Addition</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="revenue_deduction" name="revenue_type" value="deduction">
+                            <span>As Deduction</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="padding: 0.5rem; background: #f5f5f5; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="apply_to_expense" name="apply_to_expense" value="true" onchange="toggleExpenseOptions(this.checked)">
+                        <span><strong>Apply to Deposits & Expenses</strong></span>
+                    </label>
+                    <div id="expense_options" style="margin-left: 2rem; display: none;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="expense_addition" name="expense_type" value="addition" checked>
+                            <span>As Addition</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="expense_deduction" name="expense_type" value="deduction">
+                            <span>As Deduction</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary">Create Requirement</button>
         </form>
     </div>
@@ -125,17 +205,76 @@
             <div class="form-group">
                 <label for="edit_name">Requirement Name:</label>
                 <input type="text" id="edit_name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label for="edit_field_name">Field Name (technical):</label>
-                <input type="text" id="edit_field_name" name="field_name" required>
-                <small>Use lowercase with underscores (snake_case)</small>
+                <small>Field name will be auto-generated from this name</small>
             </div>
             <div class="form-group">
                 <label for="edit_display_order">Display Order:</label>
                 <input type="number" id="edit_display_order" name="display_order" value="0" min="0">
                 <small>Lower numbers appear first in forms</small>
             </div>
+
+            <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 1rem; margin-top: 1rem;">
+                <strong style="display: block; margin-bottom: 0.5rem;">Behavior Options:</strong>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="edit_is_total" name="is_total" value="true">
+                    <span>Is Total - This is a calculated total field (not editable, auto-calculated)</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="edit_is_deduction" name="is_deduction" value="true">
+                    <span>Is Deduction - Subtract from the total field</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="edit_no_input" name="no_input" value="true">
+                    <span>No Input - Display name only (placeholder/memo, no input field)</span>
+                </label>
+
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; cursor: pointer;">
+                    <input type="checkbox" id="edit_no_null_value" name="no_null_value" value="true">
+                    <span>Require Value - Must have a positive value above 0</span>
+                </label>
+            </div>
+
+            <div class="form-group" style="border-top: 1px solid #e0e0e0; padding-top: 1rem;">
+                <strong style="display: block; margin-bottom: 0.5rem;">Apply to Financial Tables:</strong>
+
+                <div style="margin-bottom: 1rem; padding: 0.5rem; background: #f5f5f5; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="edit_apply_to_revenue" name="apply_to_revenue" value="true" onchange="toggleEditRevenueOptions(this.checked)">
+                        <span><strong>Apply to Revenue & Income</strong></span>
+                    </label>
+                    <div id="edit_revenue_options" style="margin-left: 2rem; display: none;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="edit_revenue_addition" name="revenue_type" value="addition" checked>
+                            <span>As Addition</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="edit_revenue_deduction" name="revenue_type" value="deduction">
+                            <span>As Deduction</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="padding: 0.5rem; background: #f5f5f5; border-radius: 4px;">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="edit_apply_to_expense" name="apply_to_expense" value="true" onchange="toggleEditExpenseOptions(this.checked)">
+                        <span><strong>Apply to Deposits & Expenses</strong></span>
+                    </label>
+                    <div id="edit_expense_options" style="margin-left: 2rem; display: none;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="edit_expense_addition" name="expense_type" value="addition" checked>
+                            <span>As Addition</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="radio" id="edit_expense_deduction" name="expense_type" value="deduction">
+                            <span>As Deduction</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary">Update Requirement</button>
         </form>
     </div>
@@ -156,12 +295,14 @@
 
 .modal-content {
     background-color: #fefefe;
-    margin: 10% auto;
+    margin: 5% auto;
     padding: 2rem;
     border: 1px solid #888;
     border-radius: 8px;
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .close {
@@ -186,6 +327,31 @@
     font-size: 0.875rem;
 }
 
+.badge-info {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.badge-warning {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.badge-secondary {
+    background: #f5f5f5;
+    color: #616161;
+}
+
+.badge-danger {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.badge-success {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;
@@ -201,10 +367,51 @@
 </style>
 
 <script>
-function openEditModal(slug, name, fieldName, displayOrder) {
-    document.getElementById('edit_name').value = name;
-    document.getElementById('edit_field_name').value = fieldName;
-    document.getElementById('edit_display_order').value = displayOrder;
+function toggleRevenueOptions(checked) {
+    document.getElementById('revenue_options').style.display = checked ? 'block' : 'none';
+}
+
+function toggleExpenseOptions(checked) {
+    document.getElementById('expense_options').style.display = checked ? 'block' : 'none';
+}
+
+function toggleEditRevenueOptions(checked) {
+    document.getElementById('edit_revenue_options').style.display = checked ? 'block' : 'none';
+}
+
+function toggleEditExpenseOptions(checked) {
+    document.getElementById('edit_expense_options').style.display = checked ? 'block' : 'none';
+}
+
+async function openEditModal(slug, name, fieldName, displayOrder) {
+    // Fetch the full requirement data
+    const response = await fetch('/tip-requirements/' + slug + '/data');
+    const req = await response.json();
+
+    document.getElementById('edit_name').value = req.name;
+    document.getElementById('edit_display_order').value = req.display_order;
+
+    document.getElementById('edit_is_total').checked = req.is_total || false;
+    document.getElementById('edit_is_deduction').checked = req.is_deduction || false;
+    document.getElementById('edit_no_input').checked = req.no_input || false;
+    document.getElementById('edit_no_null_value').checked = req.no_null_value || false;
+
+    document.getElementById('edit_apply_to_revenue').checked = req.apply_to_revenue || false;
+    toggleEditRevenueOptions(req.apply_to_revenue || false);
+    if (req.revenue_is_deduction) {
+        document.getElementById('edit_revenue_deduction').checked = true;
+    } else {
+        document.getElementById('edit_revenue_addition').checked = true;
+    }
+
+    document.getElementById('edit_apply_to_expense').checked = req.apply_to_expense || false;
+    toggleEditExpenseOptions(req.apply_to_expense || false);
+    if (req.expense_is_deduction) {
+        document.getElementById('edit_expense_deduction').checked = true;
+    } else {
+        document.getElementById('edit_expense_addition').checked = true;
+    }
+
     document.getElementById('editTipForm').action = '/tip-requirements/' + slug + '/update';
     document.getElementById('editTipModal').style.display = 'block';
 }
