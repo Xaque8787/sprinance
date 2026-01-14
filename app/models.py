@@ -97,6 +97,7 @@ class DailyEmployeeEntry(Base):
     tips_on_paycheck = Column(Float, default=0.0)
     tip_out = Column(Float, default=0.0)
     calculated_take_home = Column(Float, default=0.0)
+    tip_values = Column(JSON, default=dict)
 
     daily_balance = relationship("DailyBalance", back_populates="employee_entries")
     employee = relationship("Employee", back_populates="daily_entries")
