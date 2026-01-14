@@ -167,7 +167,7 @@
 
         <div class="form-group" style="margin-top: 1rem;">
             <label>
-                <input type="checkbox" id="export_send_email" onchange="toggleExportEmailSection()">
+                <input type="checkbox" id="export_send_email" onchange="toggleExportEmailSection()" checked>
                 <strong>Send report via email</strong>
             </label>
         </div>
@@ -558,6 +558,7 @@ function openExportModal() {
     loadExportAdminUsers();
     const modal = document.getElementById('export-modal');
     modal.classList.add('active');
+    toggleExportEmailSection();
 }
 
 function closeExportModal() {
