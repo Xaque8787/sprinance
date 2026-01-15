@@ -33,7 +33,7 @@ scheduler = BackgroundScheduler(
     timezone=tz
 )
 
-def get_next_run_times(schedule_type, cron_expression=None, interval_value=None, interval_unit=None, count=5):
+def get_next_run_times(schedule_type, cron_expression=None, interval_value=None, interval_unit=None, starts_at=None, count=5):
     """
     Calculate the next N run times for a schedule.
 
@@ -42,6 +42,7 @@ def get_next_run_times(schedule_type, cron_expression=None, interval_value=None,
         cron_expression: Cron expression string (for cron schedules)
         interval_value: Interval value (for interval schedules)
         interval_unit: 'minutes', 'hours', 'days', 'weeks' (for interval schedules)
+        starts_at: Starting datetime for interval schedules (optional, defaults to now)
         count: Number of next run times to calculate
 
     Returns:
@@ -79,7 +80,20 @@ def get_next_run_times(schedule_type, cron_expression=None, interval_value=None,
 
         elif schedule_type == 'interval':
             kwargs = {interval_unit: interval_value}
-            trigger = IntervalTrigger(timezone=tz, start_date=now, **kwargs)
+
+            if starts_at:
+                if isinstance(starts_at, str):
+                    start_date = datetime.fromisoformat(starts_at.replace('Z', '+00:00'))
+                    if start_date.tzinfo is None:
+                        start_date = tz.localize(start_date)
+                    else:
+                        start_date = start_date.astimezone(tz)
+                else:
+                    start_date = starts_at
+            else:
+                start_date = now
+
+            trigger = IntervalTrigger(timezone=tz, start_date=start_date, **kwargs)
 
             current = now
             for _ in range(count):

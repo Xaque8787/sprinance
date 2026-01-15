@@ -150,6 +150,11 @@
                         </select>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label for="starts_at">Task Begins At</label>
+                    <input type="datetime-local" id="starts_at" name="starts_at" class="form-control">
+                    <small>Set a starting reference point for the schedule (optional, defaults to now)</small>
+                </div>
             </div>
 
             <div id="cron_fields" class="schedule-fields" style="display: none;">
@@ -575,6 +580,11 @@ async function previewNextRuns() {
         }
         params.append('interval_value', intervalValue);
         params.append('interval_unit', intervalUnit);
+
+        const startsAt = document.getElementById('starts_at').value;
+        if (startsAt) {
+            params.append('starts_at', startsAt);
+        }
     }
 
     const response = await fetch(`/scheduled-tasks/next-runs?${params}`);

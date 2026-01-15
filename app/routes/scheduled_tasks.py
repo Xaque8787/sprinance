@@ -78,6 +78,7 @@ async def create_scheduled_task(
     cron_expression = form_data.get("cron_expression", "").strip() if schedule_type == "cron" else None
     interval_value = int(form_data.get("interval_value", 0)) if schedule_type == "interval" else None
     interval_unit = form_data.get("interval_unit") if schedule_type == "interval" else None
+    starts_at = form_data.get("starts_at", "").strip() if schedule_type == "interval" else None
     date_range_type = form_data.get("date_range_type")
     bypass_opt_in = 1 if form_data.get("bypass_opt_in") == "1" else 0
 
@@ -91,17 +92,17 @@ async def create_scheduled_task(
     email_list_json = json.dumps(email_list) if email_list else None
 
     try:
-        next_runs = get_next_run_times(schedule_type, cron_expression, interval_value, interval_unit, count=1)
+        next_runs = get_next_run_times(schedule_type, cron_expression, interval_value, interval_unit, starts_at, count=1)
         next_run_at = next_runs[0].isoformat() if next_runs else None
 
         result = db.execute(text("""
             INSERT INTO scheduled_tasks (
                 name, task_type, schedule_type, cron_expression,
-                interval_value, interval_unit, date_range_type,
+                interval_value, interval_unit, starts_at, date_range_type,
                 email_list, bypass_opt_in, is_active, next_run_at
             ) VALUES (
                 :name, :task_type, :schedule_type, :cron_expression,
-                :interval_value, :interval_unit, :date_range_type,
+                :interval_value, :interval_unit, :starts_at, :date_range_type,
                 :email_list, :bypass_opt_in, 1, :next_run_at
             )
         """), {
@@ -111,6 +112,7 @@ async def create_scheduled_task(
             "cron_expression": cron_expression,
             "interval_value": interval_value,
             "interval_unit": interval_unit,
+            "starts_at": starts_at,
             "date_range_type": date_range_type,
             "email_list": email_list_json,
             "bypass_opt_in": bypass_opt_in,
@@ -122,7 +124,7 @@ async def create_scheduled_task(
 
         add_job_to_scheduler(
             task_id, name, task_type, schedule_type,
-            cron_expression, interval_value, interval_unit,
+            cron_expression, interval_value, interval_unit, starts_at,
             date_range_type, email_list_json, bypass_opt_in
         )
 
@@ -172,10 +174,18 @@ async def toggle_scheduled_task(
 
         job_id = f"task_{task_id}"
         if new_status:
+            task_dict = db.execute(text("""
+                SELECT id, name, task_type, schedule_type, cron_expression,
+                       interval_value, interval_unit, starts_at, date_range_type,
+                       email_list, bypass_opt_in
+                FROM scheduled_tasks
+                WHERE id = :task_id
+            """), {"task_id": task_id}).fetchone()
+
             add_job_to_scheduler(
-                task[0], task[1], task[2], task[3],
-                task[4], task[5], task[6],
-                task[9], task[10], task[11]
+                task_dict[0], task_dict[1], task_dict[2], task_dict[3],
+                task_dict[4], task_dict[5], task_dict[6], task_dict[7],
+                task_dict[8], task_dict[9], task_dict[10]
             )
         else:
             if scheduler.get_job(job_id):
@@ -233,6 +243,7 @@ async def get_next_runs(
     cron_expression: Optional[str] = None,
     interval_value: Optional[int] = None,
     interval_unit: Optional[str] = None,
+    starts_at: Optional[str] = None,
     current_user: User = Depends(get_current_user)
 ):
     if not current_user or not current_user.is_admin:
@@ -247,6 +258,7 @@ async def get_next_runs(
             cron_expression,
             interval_value,
             interval_unit,
+            starts_at,
             count=5
         )
 
@@ -266,12 +278,13 @@ async def get_next_runs(
 
 def add_job_to_scheduler(
     task_id, name, task_type, schedule_type,
-    cron_expression, interval_value, interval_unit,
+    cron_expression, interval_value, interval_unit, starts_at,
     date_range_type, email_list_json, bypass_opt_in
 ):
     """Add a job to the APScheduler"""
     from apscheduler.triggers.cron import CronTrigger
     from apscheduler.triggers.interval import IntervalTrigger
+    import pytz
 
     job_id = f"task_{task_id}"
 
@@ -296,6 +309,17 @@ def add_job_to_scheduler(
         )
     elif schedule_type == "interval":
         kwargs = {interval_unit: interval_value}
+
+        if starts_at:
+            if isinstance(starts_at, str):
+                tz = pytz.timezone('America/Los_Angeles')
+                start_date = datetime.fromisoformat(starts_at.replace('Z', '+00:00'))
+                if start_date.tzinfo is None:
+                    start_date = tz.localize(start_date)
+                else:
+                    start_date = start_date.astimezone(tz)
+                kwargs['start_date'] = start_date
+
         trigger = IntervalTrigger(**kwargs)
     else:
         raise ValueError(f"Unknown schedule type: {schedule_type}")
@@ -314,15 +338,18 @@ def load_scheduled_tasks():
     db = SessionLocal()
     try:
         tasks = db.execute(text("""
-            SELECT * FROM scheduled_tasks WHERE is_active = 1
+            SELECT id, name, task_type, schedule_type, cron_expression,
+                   interval_value, interval_unit, starts_at, date_range_type,
+                   email_list, bypass_opt_in
+            FROM scheduled_tasks WHERE is_active = 1
         """)).fetchall()
 
         for task in tasks:
             try:
                 add_job_to_scheduler(
                     task[0], task[1], task[2], task[3],
-                    task[4], task[5], task[6],
-                    task[9], task[10], task[11]
+                    task[4], task[5], task[6], task[7],
+                    task[8], task[9], task[10]
                 )
             except Exception as e:
                 print(f"Failed to load task {task[1]}: {e}")
