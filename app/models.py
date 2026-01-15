@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Integer, Float, Date, ForeignKey, Text, JSON, Table
+from sqlalchemy import Column, String, Boolean, Integer, Float, Date, DateTime, ForeignKey, Text, JSON, Table
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -147,3 +147,42 @@ class DailyFinancialLineItem(Base):
     daily_balance = relationship("DailyBalance", back_populates="financial_line_items")
     template = relationship("FinancialLineItemTemplate", back_populates="daily_line_items")
     employee = relationship("Employee")
+
+class ScheduledTask(Base):
+    __tablename__ = "scheduled_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    task_type = Column(String, nullable=False)
+    schedule_type = Column(String, nullable=False)
+    cron_expression = Column(String, nullable=True)
+    interval_value = Column(Integer, nullable=True)
+    interval_unit = Column(String, nullable=True)
+    start_date = Column(String, nullable=True)
+    end_date = Column(String, nullable=True)
+    date_range_type = Column(String, nullable=True)
+    email_list = Column(String, nullable=True)
+    bypass_opt_in = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)
+    last_run_at = Column(DateTime, nullable=True)
+    next_run_at = Column(DateTime, nullable=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
+    starts_at = Column(DateTime, nullable=True)
+
+    employee = relationship("Employee")
+    executions = relationship("TaskExecution", back_populates="task", cascade="all, delete-orphan")
+
+class TaskExecution(Base):
+    __tablename__ = "task_executions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_id = Column(Integer, ForeignKey("scheduled_tasks.id", ondelete="CASCADE"), nullable=False)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    status = Column(String, nullable=False)
+    error_message = Column(Text, nullable=True)
+    result_data = Column(Text, nullable=True)
+
+    task = relationship("ScheduledTask", back_populates="executions")
