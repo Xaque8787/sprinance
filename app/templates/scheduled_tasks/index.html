@@ -219,7 +219,7 @@
 
             <div class="form-actions">
                 <button type="button" class="btn btn-secondary" onclick="previewNextRuns()">Preview Schedule</button>
-                <button type="submit" class="btn btn-primary">Create Task</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">Create Task</button>
                 <button type="button" class="btn btn-secondary" onclick="closeCreateTaskModal()">Cancel</button>
             </div>
         </form>
@@ -551,10 +551,13 @@
 </style>
 
 <script>
-function showCreateTaskModal() {
-    document.getElementById('modalTitle').textContent = 'Create Scheduled Task';
-    document.getElementById('task_id').value = '';
-    document.getElementById('createTaskForm').reset();
+function showCreateTaskModal(resetForm = true) {
+    if (resetForm) {
+        document.getElementById('modalTitle').textContent = 'Create Scheduled Task';
+        document.getElementById('task_id').value = '';
+        document.getElementById('createTaskForm').reset();
+        document.getElementById('submitBtn').textContent = 'Create Task';
+    }
     document.getElementById('next_runs_preview').style.display = 'none';
     toggleScheduleFields();
     document.getElementById('createTaskModal').style.display = 'flex';
@@ -600,20 +603,24 @@ async function previewNextRuns() {
         }
     }
 
-    const response = await fetch(`/scheduled-tasks/next-runs?${params}`);
-    const data = await response.json();
+    try {
+        const response = await fetch(`/scheduled-tasks/next-runs?${params}`);
+        const data = await response.json();
 
-    if (data.success) {
-        const list = document.getElementById('next_runs_list');
-        list.innerHTML = '';
-        data.next_runs.forEach(run => {
-            const li = document.createElement('li');
-            li.textContent = new Date(run).toLocaleString();
-            list.appendChild(li);
-        });
-        document.getElementById('next_runs_preview').style.display = 'block';
-    } else {
-        alert('Error: ' + data.message);
+        if (data.success) {
+            const list = document.getElementById('next_runs_list');
+            list.innerHTML = '';
+            data.next_runs.forEach(run => {
+                const li = document.createElement('li');
+                li.textContent = new Date(run).toLocaleString();
+                list.appendChild(li);
+            });
+            document.getElementById('next_runs_preview').style.display = 'block';
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error occurred'));
+        }
+    } catch (error) {
+        alert('Error previewing schedule: ' + error.message);
     }
 }
 
@@ -649,48 +656,62 @@ async function handleCreateTask(event) {
 }
 
 async function editTask(taskId) {
-    const response = await fetch(`/scheduled-tasks/${taskId}`);
-    const data = await response.json();
+    try {
+        const response = await fetch(`/scheduled-tasks/${taskId}`);
+        const data = await response.json();
 
-    if (!data.success) {
-        alert('Error loading task: ' + data.message);
-        return;
+        if (!data.success) {
+            alert('Error loading task: ' + (data.message || 'Unknown error'));
+            return;
+        }
+
+        const task = data.task;
+
+        // Update modal UI
+        document.getElementById('modalTitle').textContent = 'Edit Scheduled Task';
+        document.getElementById('submitBtn').textContent = 'Update Task';
+        document.getElementById('task_id').value = task.id;
+
+        // Populate form fields
+        document.getElementById('name').value = task.name;
+        document.getElementById('task_type').value = task.task_type;
+        document.getElementById('schedule_type').value = task.schedule_type;
+        document.getElementById('date_range_type').value = task.date_range_type;
+
+        if (task.schedule_type === 'cron') {
+            document.getElementById('cron_expression').value = task.cron_expression || '';
+        } else {
+            document.getElementById('interval_value').value = task.interval_value || '';
+            document.getElementById('interval_unit').value = task.interval_unit || '';
+            document.getElementById('starts_at').value = task.starts_at || '';
+        }
+
+        toggleScheduleFields();
+
+        // Clear all email checkboxes first
+        document.querySelectorAll('input[name="user_emails[]"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+
+        // Check the appropriate email checkboxes
+        document.querySelectorAll('input[name="user_emails[]"]').forEach(checkbox => {
+            checkbox.checked = task.email_list && task.email_list.includes(checkbox.value);
+        });
+
+        // Set additional email if there's one not in the admin list
+        const additionalEmails = task.email_list ? task.email_list.filter(email => {
+            return !Array.from(document.querySelectorAll('input[name="user_emails[]"]')).some(cb => cb.value === email);
+        }) : [];
+
+        document.getElementById('additional_email').value = additionalEmails.length > 0 ? additionalEmails[0] : '';
+
+        document.getElementById('bypass_opt_in').checked = task.bypass_opt_in === 1;
+
+        // Show modal without resetting
+        showCreateTaskModal(false);
+    } catch (error) {
+        alert('Error loading task: ' + error.message);
     }
-
-    const task = data.task;
-
-    document.getElementById('modalTitle').textContent = 'Edit Scheduled Task';
-    document.getElementById('task_id').value = task.id;
-    document.getElementById('name').value = task.name;
-    document.getElementById('task_type').value = task.task_type;
-    document.getElementById('schedule_type').value = task.schedule_type;
-    document.getElementById('date_range_type').value = task.date_range_type;
-
-    if (task.schedule_type === 'cron') {
-        document.getElementById('cron_expression').value = task.cron_expression || '';
-    } else {
-        document.getElementById('interval_value').value = task.interval_value || '';
-        document.getElementById('interval_unit').value = task.interval_unit || '';
-        document.getElementById('starts_at').value = task.starts_at || '';
-    }
-
-    toggleScheduleFields();
-
-    document.querySelectorAll('input[name="user_emails[]"]').forEach(checkbox => {
-        checkbox.checked = task.email_list && task.email_list.includes(checkbox.value);
-    });
-
-    const additionalEmails = task.email_list ? task.email_list.filter(email => {
-        return !Array.from(document.querySelectorAll('input[name="user_emails[]"]')).some(cb => cb.value === email);
-    }) : [];
-
-    if (additionalEmails.length > 0) {
-        document.getElementById('additional_email').value = additionalEmails[0];
-    }
-
-    document.getElementById('bypass_opt_in').checked = task.bypass_opt_in === 1;
-
-    showCreateTaskModal();
 }
 
 async function toggleTask(taskId) {
