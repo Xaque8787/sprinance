@@ -108,6 +108,19 @@ def get_next_run_times(schedule_type, cron_expression=None, interval_value=None,
             current = start_date
             interval_delta = timedelta(**delta_kwargs)
 
+            # Skip past occurrences to find the next future run
+            while current <= now:
+                if interval_unit in ['days', 'weeks']:
+                    naive_current = current.replace(tzinfo=None)
+                    naive_next = naive_current + interval_delta
+                    try:
+                        current = tz.localize(naive_next, is_dst=None)
+                    except:
+                        current = tz.localize(naive_next, is_dst=False)
+                else:
+                    current = current + interval_delta
+
+            # Now collect the next N future runs
             for i in range(count):
                 next_runs.append(current)
                 # For day/week intervals, add to naive time then re-localize to preserve wall clock time
