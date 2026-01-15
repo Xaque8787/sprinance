@@ -57,10 +57,12 @@
                         {% endif %}
                     </span>
                 </div>
+                {% if item.task[9] %}
                 <div class="task-info">
                     <span class="label">Date Range:</span>
                     <span>{{ item.task[9].replace('_', ' ').title() }}</span>
                 </div>
+                {% endif %}
                 <div class="task-info">
                     <span class="label">Status:</span>
                     <span class="status {% if item.task[12] %}active{% else %}inactive{% endif %}">
