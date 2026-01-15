@@ -24,6 +24,11 @@ async def scheduled_tasks_page(
     if not current_user or not current_user.is_admin:
         return RedirectResponse(url="/login", status_code=303)
 
+    import pytz
+    import os
+    TIMEZONE = os.getenv('TZ', 'America/Los_Angeles')
+    tz = pytz.timezone(TIMEZONE)
+
     tasks = db.execute(text("""
         SELECT * FROM scheduled_tasks
         ORDER BY created_at DESC
@@ -38,9 +43,38 @@ async def scheduled_tasks_page(
             LIMIT 5
         """), {"task_id": task[0]}).fetchall()
 
+        task_list = list(task)
+
+        if task_list[14]:
+            dt = datetime.fromisoformat(task_list[14].replace('Z', '+00:00'))
+            if dt.tzinfo is None:
+                dt = pytz.UTC.localize(dt)
+            task_list[14] = dt.astimezone(tz).strftime('%Y-%m-%d %I:%M:%S %p')
+
+        if task_list[15]:
+            dt = datetime.fromisoformat(task_list[15].replace('Z', '+00:00'))
+            if dt.tzinfo is None:
+                dt = pytz.UTC.localize(dt)
+            task_list[15] = dt.astimezone(tz).strftime('%Y-%m-%d %I:%M:%S %p')
+
+        executions_list = []
+        for execution in recent_executions:
+            exec_list = list(execution)
+            if exec_list[2]:
+                dt = datetime.fromisoformat(exec_list[2].replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    dt = pytz.UTC.localize(dt)
+                exec_list[2] = dt.astimezone(tz).strftime('%Y-%m-%d %I:%M:%S %p')
+            if exec_list[4]:
+                dt = datetime.fromisoformat(exec_list[4].replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    dt = pytz.UTC.localize(dt)
+                exec_list[4] = dt.astimezone(tz).strftime('%Y-%m-%d %I:%M:%S %p')
+            executions_list.append(exec_list)
+
         tasks_with_executions.append({
-            "task": task,
-            "executions": recent_executions
+            "task": task_list,
+            "executions": executions_list
         })
 
     admin_users = db.query(User).filter(
