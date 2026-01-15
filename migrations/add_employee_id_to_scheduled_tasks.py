@@ -1,44 +1,48 @@
-import sqlite3
+"""
+Migration: Add employee_id column to scheduled_tasks
+
+This migration adds a new integer column 'employee_id' to the scheduled_tasks table.
+This attribute allows scheduled tasks to be associated with a specific employee.
+
+Database Location:
+- Docker: /app/data/database.db
+- Bare metal: <project_root>/data/database.db
+
+Usage:
+    python migrations/add_employee_id_to_scheduled_tasks.py
+"""
+
+import sys
 import os
 
-def migrate():
-    # Detect environment
-    if os.path.exists('/app/data'):
-        DATABASE_DIR = "/app/data"
-    else:
-        DATABASE_DIR = "data"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
 
-    db_path = os.path.join(DATABASE_DIR, "database.db")
+if os.path.exists("/app"):
+    os.chdir("/app")
+else:
+    os.chdir(project_root)
 
-    if not os.path.exists(db_path):
-        print(f"Database not found at {db_path}")
-        return
+sys.path.insert(0, project_root)
 
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+from sqlalchemy import inspect, text
+from app.database import engine
 
-    try:
-        cursor.execute("PRAGMA table_info(scheduled_tasks)")
-        columns = [row[1] for row in cursor.fetchall()]
+def run_migration():
+    inspector = inspect(engine)
+    columns = [col['name'] for col in inspector.get_columns('scheduled_tasks')]
 
-        if 'employee_id' not in columns:
-            cursor.execute("""
+    if 'employee_id' not in columns:
+        print("Adding 'employee_id' column to scheduled_tasks table...")
+        with engine.connect() as conn:
+            conn.execute(text("""
                 ALTER TABLE scheduled_tasks
-                ADD COLUMN employee_id INTEGER
-            """)
-            print("✓ Added employee_id column to scheduled_tasks")
-        else:
-            print("✓ employee_id column already exists in scheduled_tasks")
-
-        conn.commit()
-        print("✓ Migration completed successfully")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"✗ Migration failed: {e}")
-        raise
-    finally:
-        conn.close()
+                ADD COLUMN employee_id INTEGER;
+            """))
+            conn.commit()
+        print("✓ Migration completed: employee_id column added")
+    else:
+        print("✓ Column 'employee_id' already exists, skipping migration")
 
 if __name__ == "__main__":
-    migrate()
+    run_migration()
