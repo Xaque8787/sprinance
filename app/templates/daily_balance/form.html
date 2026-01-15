@@ -349,12 +349,12 @@
 
         <div class="form-group">
             <label>
-                <input type="checkbox" id="finalize_send_email" onchange="toggleFinalizeEmailSection()">
+                <input type="checkbox" id="finalize_send_email" onchange="toggleFinalizeEmailSection()" checked>
                 <strong>Send report via email</strong>
             </label>
         </div>
 
-        <div id="finalize-email-section" style="display: none;">
+        <div id="finalize-email-section" style="display: block;">
             <div class="email-recipients-section">
                 <h4>Email Recipients</h4>
                 <div id="finalize-admin-users-list" class="users-list">
@@ -1143,8 +1143,8 @@ function openFinalizeModal() {
 function closeFinalizeModal() {
     const modal = document.getElementById('finalize-modal');
     modal.classList.remove('active');
-    document.getElementById('finalize_send_email').checked = false;
-    document.getElementById('finalize-email-section').style.display = 'none';
+    document.getElementById('finalize_send_email').checked = true;
+    document.getElementById('finalize-email-section').style.display = 'block';
 }
 
 function toggleFinalizeEmailSection() {
