@@ -32,8 +32,21 @@
             <div class="task-details">
                 <div class="task-info">
                     <span class="label">Type:</span>
-                    <span>{{ 'Tip Report' if item.task[2] == 'tip_report' else 'Daily Balance Report' }}</span>
+                    <span>
+                        {% if item.task[2] == 'tip_report' %}Tip Report
+                        {% elif item.task[2] == 'daily_balance_report' %}Daily Balance Report
+                        {% elif item.task[2] == 'employee_tip_report' %}Employee Tip Report
+                        {% elif item.task[2] == 'backup' %}Backup Report
+                        {% else %}{{ item.task[2] }}
+                        {% endif %}
+                    </span>
                 </div>
+                {% if item.task[2] == 'employee_tip_report' and item.employee_name %}
+                <div class="task-info">
+                    <span class="label">Employee:</span>
+                    <span>{{ item.employee_name }}</span>
+                </div>
+                {% endif %}
                 <div class="task-info">
                     <span class="label">Schedule:</span>
                     <span>
@@ -126,9 +139,21 @@
 
             <div class="form-group">
                 <label for="task_type">Report Type</label>
-                <select id="task_type" name="task_type" required class="form-control">
+                <select id="task_type" name="task_type" required class="form-control" onchange="toggleTaskTypeFields()">
                     <option value="tip_report">Tip Report</option>
                     <option value="daily_balance_report">Daily Balance Report</option>
+                    <option value="employee_tip_report">Employee Tip Report</option>
+                    <option value="backup">Backup Report</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="employee_selection" style="display: none;">
+                <label for="employee_id">Select Employee</label>
+                <select id="employee_id" name="employee_id" class="form-control">
+                    <option value="">-- Select an employee --</option>
+                    {% for employee in employees %}
+                    <option value="{{ employee.id }}">{{ employee.name }}</option>
+                    {% endfor %}
                 </select>
             </div>
 
@@ -172,12 +197,12 @@
                 </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" id="date_range_group">
                 <label for="date_range_type">Date Range</label>
                 <select id="date_range_type" name="date_range_type" required class="form-control">
                     <option value="previous_day">Previous Day</option>
-                    <option value="previous_week">Previous Week</option>
-                    <option value="previous_2_weeks">Previous 2 Weeks</option>
+                    <option value="previous_week">Previous Week (Sunday - Sunday)</option>
+                    <option value="previous_2_weeks">Previous 2 Weeks (Sunday - Sunday)</option>
                     <option value="previous_month">Previous Month</option>
                     <option value="previous_7_days">Previous 7 Days</option>
                     <option value="previous_14_days">Previous 14 Days</option>
@@ -576,6 +601,34 @@ function toggleScheduleFields() {
     document.getElementById('cron_fields').style.display = scheduleType === 'cron' ? 'block' : 'none';
 }
 
+function toggleTaskTypeFields() {
+    const taskType = document.getElementById('task_type').value;
+    const employeeSelection = document.getElementById('employee_selection');
+    const dateRangeGroup = document.getElementById('date_range_group');
+    const emailRecipients = document.querySelector('.form-group:has(.email-selection)');
+    const bypassOptIn = document.querySelector('.form-group:has(#bypass_opt_in)');
+
+    if (taskType === 'employee_tip_report') {
+        employeeSelection.style.display = 'block';
+        document.getElementById('employee_id').required = true;
+        dateRangeGroup.style.display = 'block';
+        if (emailRecipients) emailRecipients.style.display = 'block';
+        if (bypassOptIn) bypassOptIn.style.display = 'block';
+    } else if (taskType === 'backup') {
+        employeeSelection.style.display = 'none';
+        document.getElementById('employee_id').required = false;
+        dateRangeGroup.style.display = 'none';
+        if (emailRecipients) emailRecipients.style.display = 'none';
+        if (bypassOptIn) bypassOptIn.style.display = 'none';
+    } else {
+        employeeSelection.style.display = 'none';
+        document.getElementById('employee_id').required = false;
+        dateRangeGroup.style.display = 'block';
+        if (emailRecipients) emailRecipients.style.display = 'block';
+        if (bypassOptIn) bypassOptIn.style.display = 'block';
+    }
+}
+
 async function previewNextRuns() {
     const scheduleType = document.getElementById('schedule_type').value;
     let params = new URLSearchParams({ schedule_type: scheduleType });
@@ -698,7 +751,10 @@ async function editTask(taskId) {
         document.getElementById('name').value = task.name;
         document.getElementById('task_type').value = task.task_type;
         document.getElementById('schedule_type').value = task.schedule_type;
-        document.getElementById('date_range_type').value = task.date_range_type;
+        document.getElementById('date_range_type').value = task.date_range_type || '';
+        document.getElementById('employee_id').value = task.employee_id || '';
+
+        toggleTaskTypeFields();
 
         if (task.schedule_type === 'cron') {
             document.getElementById('cron_expression').value = task.cron_expression || '';

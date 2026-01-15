@@ -7,10 +7,10 @@ from datetime import datetime
 from typing import Optional
 import json
 from app.database import get_db, SessionLocal
-from app.models import User
+from app.models import User, Employee
 from app.auth.jwt_handler import get_current_user
 from app.scheduler import scheduler, get_next_run_times
-from app.services.scheduler_tasks import run_tip_report_task, run_daily_balance_report_task
+from app.services.scheduler_tasks import run_tip_report_task, run_daily_balance_report_task, run_employee_tip_report_task, run_backup_task
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -83,13 +83,25 @@ async def scheduled_tasks_page(
         User.email != ""
     ).all()
 
+    employees = db.query(Employee).order_by(Employee.name).all()
+
+    # Add employee name to tasks if applicable
+    for item in tasks_with_executions:
+        if item['task'][2] == 'employee_tip_report' and len(item['task']) > 17 and item['task'][17]:
+            employee_id = item['task'][17]
+            employee = db.query(Employee).filter(Employee.id == employee_id).first()
+            item['employee_name'] = employee.name if employee else None
+        else:
+            item['employee_name'] = None
+
     return templates.TemplateResponse(
         "scheduled_tasks/index.html",
         {
             "request": request,
             "current_user": current_user,
             "tasks": tasks_with_executions,
-            "admin_users": admin_users
+            "admin_users": admin_users,
+            "employees": employees
         }
     )
 
@@ -161,8 +173,9 @@ async def create_scheduled_task(
     interval_value = int(form_data.get("interval_value", 0)) if schedule_type == "interval" else None
     interval_unit = form_data.get("interval_unit") if schedule_type == "interval" else None
     starts_at = form_data.get("starts_at", "").strip() if schedule_type == "interval" else None
-    date_range_type = form_data.get("date_range_type")
+    date_range_type = form_data.get("date_range_type") if task_type not in ["backup"] else None
     bypass_opt_in = 1 if form_data.get("bypass_opt_in") == "1" else 0
+    employee_id = int(form_data.get("employee_id")) if form_data.get("employee_id") and form_data.get("employee_id").strip() else None
 
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
@@ -181,11 +194,11 @@ async def create_scheduled_task(
             INSERT INTO scheduled_tasks (
                 name, task_type, schedule_type, cron_expression,
                 interval_value, interval_unit, starts_at, date_range_type,
-                email_list, bypass_opt_in, is_active, next_run_at
+                email_list, bypass_opt_in, is_active, next_run_at, employee_id
             ) VALUES (
                 :name, :task_type, :schedule_type, :cron_expression,
                 :interval_value, :interval_unit, :starts_at, :date_range_type,
-                :email_list, :bypass_opt_in, 1, :next_run_at
+                :email_list, :bypass_opt_in, 1, :next_run_at, :employee_id
             )
         """), {
             "name": name,
@@ -198,7 +211,8 @@ async def create_scheduled_task(
             "date_range_type": date_range_type,
             "email_list": email_list_json,
             "bypass_opt_in": bypass_opt_in,
-            "next_run_at": next_run_at
+            "next_run_at": next_run_at,
+            "employee_id": employee_id
         })
         db.commit()
 
@@ -207,7 +221,7 @@ async def create_scheduled_task(
         add_job_to_scheduler(
             task_id, name, task_type, schedule_type,
             cron_expression, interval_value, interval_unit, starts_at,
-            date_range_type, email_list_json, bypass_opt_in
+            date_range_type, email_list_json, bypass_opt_in, employee_id
         )
 
         return JSONResponse(
@@ -259,7 +273,7 @@ async def toggle_scheduled_task(
             task_dict = db.execute(text("""
                 SELECT id, name, task_type, schedule_type, cron_expression,
                        interval_value, interval_unit, starts_at, date_range_type,
-                       email_list, bypass_opt_in
+                       email_list, bypass_opt_in, employee_id
                 FROM scheduled_tasks
                 WHERE id = :task_id
             """), {"task_id": task_id}).fetchone()
@@ -267,7 +281,7 @@ async def toggle_scheduled_task(
             add_job_to_scheduler(
                 task_dict[0], task_dict[1], task_dict[2], task_dict[3],
                 task_dict[4], task_dict[5], task_dict[6], task_dict[7],
-                task_dict[8], task_dict[9], task_dict[10]
+                task_dict[8], task_dict[9], task_dict[10], task_dict[11]
             )
         else:
             if scheduler.get_job(job_id):
@@ -301,7 +315,7 @@ async def get_scheduled_task(
         task = db.execute(text("""
             SELECT id, name, task_type, schedule_type, cron_expression,
                    interval_value, interval_unit, starts_at, date_range_type,
-                   email_list, bypass_opt_in, is_active
+                   email_list, bypass_opt_in, is_active, employee_id
             FROM scheduled_tasks WHERE id = :task_id
         """), {"task_id": task_id}).fetchone()
 
@@ -329,7 +343,8 @@ async def get_scheduled_task(
                     "date_range_type": task[8],
                     "email_list": email_list,
                     "bypass_opt_in": task[10],
-                    "is_active": task[11]
+                    "is_active": task[11],
+                    "employee_id": task[12]
                 }
             }
         )
@@ -361,8 +376,9 @@ async def update_scheduled_task(
     interval_value = int(form_data.get("interval_value", 0)) if schedule_type == "interval" else None
     interval_unit = form_data.get("interval_unit") if schedule_type == "interval" else None
     starts_at = form_data.get("starts_at", "").strip() if schedule_type == "interval" else None
-    date_range_type = form_data.get("date_range_type")
+    date_range_type = form_data.get("date_range_type") if task_type not in ["backup"] else None
     bypass_opt_in = 1 if form_data.get("bypass_opt_in") == "1" else 0
+    employee_id = int(form_data.get("employee_id")) if form_data.get("employee_id") and form_data.get("employee_id").strip() else None
 
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
@@ -389,7 +405,8 @@ async def update_scheduled_task(
                 date_range_type = :date_range_type,
                 email_list = :email_list,
                 bypass_opt_in = :bypass_opt_in,
-                next_run_at = :next_run_at
+                next_run_at = :next_run_at,
+                employee_id = :employee_id
             WHERE id = :task_id
         """), {
             "name": name,
@@ -403,6 +420,7 @@ async def update_scheduled_task(
             "email_list": email_list_json,
             "bypass_opt_in": bypass_opt_in,
             "next_run_at": next_run_at,
+            "employee_id": employee_id,
             "task_id": task_id
         })
         db.commit()
@@ -419,7 +437,7 @@ async def update_scheduled_task(
             add_job_to_scheduler(
                 task_id, name, task_type, schedule_type,
                 cron_expression, interval_value, interval_unit, starts_at,
-                date_range_type, email_list_json, bypass_opt_in
+                date_range_type, email_list_json, bypass_opt_in, employee_id
             )
 
         return JSONResponse(
@@ -471,7 +489,7 @@ async def delete_scheduled_task(
 def add_job_to_scheduler(
     task_id, name, task_type, schedule_type,
     cron_expression, interval_value, interval_unit, starts_at,
-    date_range_type, email_list_json, bypass_opt_in
+    date_range_type, email_list_json, bypass_opt_in, employee_id=None
 ):
     """Add a job to the APScheduler"""
     from apscheduler.triggers.cron import CronTrigger
@@ -485,8 +503,16 @@ def add_job_to_scheduler(
 
     if task_type == "tip_report":
         job_func = run_tip_report_task
+        job_args = [task_id, name, date_range_type, email_list_json, bypass_opt_in]
     elif task_type == "daily_balance_report":
         job_func = run_daily_balance_report_task
+        job_args = [task_id, name, date_range_type, email_list_json, bypass_opt_in]
+    elif task_type == "employee_tip_report":
+        job_func = run_employee_tip_report_task
+        job_args = [task_id, name, date_range_type, email_list_json, bypass_opt_in, employee_id]
+    elif task_type == "backup":
+        job_func = run_backup_task
+        job_args = [task_id, name]
     else:
         raise ValueError(f"Unknown task type: {task_type}")
 
@@ -521,7 +547,7 @@ def add_job_to_scheduler(
         trigger=trigger,
         id=job_id,
         name=name,
-        args=[task_id, name, date_range_type, email_list_json, bypass_opt_in],
+        args=job_args,
         replace_existing=True
     )
 
@@ -532,7 +558,7 @@ def load_scheduled_tasks():
         tasks = db.execute(text("""
             SELECT id, name, task_type, schedule_type, cron_expression,
                    interval_value, interval_unit, starts_at, date_range_type,
-                   email_list, bypass_opt_in
+                   email_list, bypass_opt_in, employee_id
             FROM scheduled_tasks WHERE is_active = 1
         """)).fetchall()
 
@@ -541,7 +567,7 @@ def load_scheduled_tasks():
                 add_job_to_scheduler(
                     task[0], task[1], task[2], task[3],
                     task[4], task[5], task[6], task[7],
-                    task[8], task[9], task[10]
+                    task[8], task[9], task[10], task[11]
                 )
             except Exception as e:
                 print(f"Failed to load task {task[1]}: {e}")
