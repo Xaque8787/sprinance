@@ -19,6 +19,7 @@
                 <li><a href="/positions">Positions</a></li>
                 {% if current_user.is_admin %}
                 <li><a href="/admin">Administration</a></li>
+                <li><a href="/scheduled-tasks">Scheduled Tasks</a></li>
                 {% endif %}
                 <li><a href="/logout" class="logout-btn">Logout ({{ current_user.username }})</a></li>
             </ul>

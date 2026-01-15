@@ -1,0 +1,656 @@
+{% extends "base.html" %}
+
+{% block title %}Scheduled Tasks - Daily Dough{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Scheduled Tasks</h2>
+    <button type="button" class="btn btn-primary" onclick="showCreateTaskModal()">Create New Task</button>
+</div>
+
+<div class="tasks-list">
+    {% if tasks %}
+        {% for item in tasks %}
+        <div class="task-card">
+            <div class="task-header">
+                <h3>{{ item.task[1] }}</h3>
+                <div class="task-actions">
+                    <button
+                        onclick="toggleTask({{ item.task[0] }})"
+                        class="btn btn-sm {% if item.task[12] %}btn-warning{% else %}btn-success{% endif %}">
+                        {% if item.task[12] %}Pause{% else %}Activate{% endif %}
+                    </button>
+                    <button onclick="deleteTask({{ item.task[0] }})" class="btn btn-sm btn-danger">Delete</button>
+                </div>
+            </div>
+
+            <div class="task-details">
+                <div class="task-info">
+                    <span class="label">Type:</span>
+                    <span>{{ 'Tip Report' if item.task[2] == 'tip_report' else 'Daily Balance Report' }}</span>
+                </div>
+                <div class="task-info">
+                    <span class="label">Schedule:</span>
+                    <span>
+                        {% if item.task[3] == 'cron' %}
+                            Cron: {{ item.task[4] }}
+                        {% else %}
+                            Every {{ item.task[5] }} {{ item.task[6] }}
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="task-info">
+                    <span class="label">Date Range:</span>
+                    <span>{{ item.task[9].replace('_', ' ').title() }}</span>
+                </div>
+                <div class="task-info">
+                    <span class="label">Status:</span>
+                    <span class="status {% if item.task[12] %}active{% else %}inactive{% endif %}">
+                        {% if item.task[12] %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                {% if item.task[14] %}
+                <div class="task-info">
+                    <span class="label">Last Run:</span>
+                    <span>{{ item.task[14] }}</span>
+                </div>
+                {% endif %}
+                {% if item.task[15] %}
+                <div class="task-info">
+                    <span class="label">Next Run:</span>
+                    <span>{{ item.task[15] }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if item.executions %}
+            <div class="task-executions">
+                <h4>Recent Executions</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Started</th>
+                            <th>Completed</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exec in item.executions %}
+                        <tr class="{{ exec[3] }}">
+                            <td>{{ exec[2] }}</td>
+                            <td>{{ exec[4] if exec[4] else '-' }}</td>
+                            <td><span class="status-badge {{ exec[3] }}">{{ exec[3] }}</span></td>
+                            <td>
+                                {% if exec[5] %}
+                                    <span class="error-message" title="{{ exec[5] }}">{{ exec[5][:50] }}...</span>
+                                {% elif exec[6] %}
+                                    <span class="success-message">{{ exec[6] }}</span>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>No scheduled tasks yet. Create your first automated task to get started.</p>
+        </div>
+    {% endif %}
+</div>
+
+<div id="createTaskModal" class="modal" style="display: none;">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3>Create Scheduled Task</h3>
+            <button class="close-btn" onclick="closeCreateTaskModal()">&times;</button>
+        </div>
+
+        <form id="createTaskForm" onsubmit="return handleCreateTask(event)">
+            <div class="form-group">
+                <label for="name">Task Name</label>
+                <input type="text" id="name" name="name" required class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="task_type">Report Type</label>
+                <select id="task_type" name="task_type" required class="form-control">
+                    <option value="tip_report">Tip Report</option>
+                    <option value="daily_balance_report">Daily Balance Report</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="schedule_type">Schedule Type</label>
+                <select id="schedule_type" name="schedule_type" required class="form-control" onchange="toggleScheduleFields()">
+                    <option value="interval">Interval</option>
+                    <option value="cron">Cron Expression</option>
+                </select>
+            </div>
+
+            <div id="interval_fields" class="schedule-fields">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="interval_value">Every</label>
+                        <input type="number" id="interval_value" name="interval_value" min="1" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="interval_unit">Unit</label>
+                        <select id="interval_unit" name="interval_unit" class="form-control">
+                            <option value="minutes">Minutes</option>
+                            <option value="hours">Hours</option>
+                            <option value="days">Days</option>
+                            <option value="weeks">Weeks</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cron_fields" class="schedule-fields" style="display: none;">
+                <div class="form-group">
+                    <label for="cron_expression">Cron Expression</label>
+                    <input type="text" id="cron_expression" name="cron_expression"
+                           placeholder="0 9 * * 1" class="form-control">
+                    <small>Format: minute hour day month day_of_week (e.g., "0 9 * * 1" for 9 AM every Monday)</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="date_range_type">Date Range</label>
+                <select id="date_range_type" name="date_range_type" required class="form-control">
+                    <option value="previous_week">Previous Week</option>
+                    <option value="previous_2_weeks">Previous 2 Weeks</option>
+                    <option value="previous_month">Previous Month</option>
+                    <option value="previous_7_days">Previous 7 Days</option>
+                    <option value="previous_14_days">Previous 14 Days</option>
+                    <option value="previous_30_days">Previous 30 Days</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Email Recipients</label>
+                <div class="email-selection">
+                    <div class="admin-users">
+                        <h4>Admin Users</h4>
+                        {% for user in admin_users %}
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="user_emails[]" value="{{ user.email }}" id="user_{{ user.id }}">
+                            <label for="user_{{ user.id }}">{{ user.username }} ({{ user.email }})</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="additional-email">
+                        <label for="additional_email">Additional Email</label>
+                        <input type="email" id="additional_email" name="additional_email"
+                               placeholder="extra@example.com" class="form-control">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" name="bypass_opt_in" value="1" id="bypass_opt_in">
+                    <label for="bypass_opt_in">Send only to selected recipients (bypass opt-in preferences)</label>
+                </div>
+            </div>
+
+            <div id="next_runs_preview" class="next-runs-preview" style="display: none;">
+                <h4>Next 5 Scheduled Runs:</h4>
+                <ul id="next_runs_list"></ul>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="previewNextRuns()">Preview Schedule</button>
+                <button type="submit" class="btn btn-primary">Create Task</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateTaskModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.task-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.task-header h3 {
+    margin: 0;
+}
+
+.task-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.task-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.task-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.task-info .label {
+    font-weight: 600;
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.task-executions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+}
+
+.task-executions h4 {
+    margin-bottom: 1rem;
+}
+
+.task-executions table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.task-executions th,
+.task-executions td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.task-executions th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-badge.running {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+}
+
+.success-message {
+    color: #28a745;
+    font-size: 0.875rem;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content.large {
+    max-width: 800px;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #666;
+}
+
+.close-btn:hover {
+    color: #000;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: auto;
+}
+
+.email-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.admin-users h4 {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.next-runs-preview {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.next-runs-preview h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.next-runs-preview ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+}
+</style>
+
+<script>
+function showCreateTaskModal() {
+    document.getElementById('createTaskModal').style.display = 'flex';
+}
+
+function closeCreateTaskModal() {
+    document.getElementById('createTaskModal').style.display = 'none';
+    document.getElementById('createTaskForm').reset();
+    document.getElementById('next_runs_preview').style.display = 'none';
+}
+
+function toggleScheduleFields() {
+    const scheduleType = document.getElementById('schedule_type').value;
+    document.getElementById('interval_fields').style.display = scheduleType === 'interval' ? 'block' : 'none';
+    document.getElementById('cron_fields').style.display = scheduleType === 'cron' ? 'block' : 'none';
+}
+
+async function previewNextRuns() {
+    const scheduleType = document.getElementById('schedule_type').value;
+    let params = new URLSearchParams({ schedule_type: scheduleType });
+
+    if (scheduleType === 'cron') {
+        const cronExpression = document.getElementById('cron_expression').value;
+        if (!cronExpression) {
+            alert('Please enter a cron expression');
+            return;
+        }
+        params.append('cron_expression', cronExpression);
+    } else {
+        const intervalValue = document.getElementById('interval_value').value;
+        const intervalUnit = document.getElementById('interval_unit').value;
+        if (!intervalValue) {
+            alert('Please enter an interval value');
+            return;
+        }
+        params.append('interval_value', intervalValue);
+        params.append('interval_unit', intervalUnit);
+    }
+
+    const response = await fetch(`/scheduled-tasks/next-runs?${params}`);
+    const data = await response.json();
+
+    if (data.success) {
+        const list = document.getElementById('next_runs_list');
+        list.innerHTML = '';
+        data.next_runs.forEach(run => {
+            const li = document.createElement('li');
+            li.textContent = new Date(run).toLocaleString();
+            list.appendChild(li);
+        });
+        document.getElementById('next_runs_preview').style.display = 'block';
+    } else {
+        alert('Error: ' + data.message);
+    }
+}
+
+async function handleCreateTask(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.target);
+
+    const response = await fetch('/scheduled-tasks/create', {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        alert('Scheduled task created successfully');
+        location.reload();
+    } else {
+        alert('Error: ' + data.message);
+    }
+
+    return false;
+}
+
+async function toggleTask(taskId) {
+    if (!confirm('Are you sure you want to toggle this task status?')) {
+        return;
+    }
+
+    const response = await fetch(`/scheduled-tasks/${taskId}/toggle`, {
+        method: 'POST'
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        location.reload();
+    } else {
+        alert('Error: ' + data.message);
+    }
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+        return;
+    }
+
+    const response = await fetch(`/scheduled-tasks/${taskId}`, {
+        method: 'DELETE'
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+        alert('Task deleted successfully');
+        location.reload();
+    } else {
+        alert('Error: ' + data.message);
+    }
+}
+</script>
+{% endblock %}

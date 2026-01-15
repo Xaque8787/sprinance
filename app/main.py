@@ -7,8 +7,9 @@ from datetime import date
 from app.database import init_db, get_db
 from app.models import User, Position, TipEntryRequirement
 from app.auth.jwt_handler import get_current_user_from_cookie
-from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items
+from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items, scheduled_tasks
 from app.utils.slugify import create_slug
+from app.scheduler import start_scheduler, shutdown_scheduler
 
 app = FastAPI(title="Internal Management System")
 
@@ -24,6 +25,7 @@ app.include_router(positions.router)
 app.include_router(tip_requirements.router)
 app.include_router(reports.router)
 app.include_router(financial_items.router)
+app.include_router(scheduled_tasks.router)
 
 def initialize_predefined_data():
     # No longer creating hardcoded positions and tip requirements
@@ -34,6 +36,13 @@ def initialize_predefined_data():
 def startup_event():
     init_db()
     initialize_predefined_data()
+    start_scheduler()
+    from app.routes.scheduled_tasks import load_scheduled_tasks
+    load_scheduled_tasks()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    shutdown_scheduler()
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: Session = Depends(get_db)):
