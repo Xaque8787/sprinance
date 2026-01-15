@@ -604,8 +604,11 @@ async function previewNextRuns() {
     }
 
     try {
+        console.log('Preview params:', params.toString());
         const response = await fetch(`/scheduled-tasks/next-runs?${params}`);
+        console.log('Response status:', response.status);
         const data = await response.json();
+        console.log('Response data:', data);
 
         if (data.success) {
             const list = document.getElementById('next_runs_list');
@@ -617,9 +620,11 @@ async function previewNextRuns() {
             });
             document.getElementById('next_runs_preview').style.display = 'block';
         } else {
+            console.error('Preview error:', data.message);
             alert('Error: ' + (data.message || 'Unknown error occurred'));
         }
     } catch (error) {
+        console.error('Fetch error:', error);
         alert('Error previewing schedule: ' + error.message);
     }
 }

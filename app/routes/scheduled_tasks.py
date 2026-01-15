@@ -411,6 +411,12 @@ async def get_next_runs(
             count=5
         )
 
+        if not next_runs:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Could not calculate schedule. Please check your schedule settings."}
+            )
+
         return JSONResponse(
             status_code=200,
             content={
@@ -420,9 +426,12 @@ async def get_next_runs(
         )
 
     except Exception as e:
+        print(f"Error in get_next_runs: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse(
             status_code=400,
-            content={"success": False, "message": str(e)}
+            content={"success": False, "message": str(e) if str(e) else "Failed to calculate next run times"}
         )
 
 def add_job_to_scheduler(
