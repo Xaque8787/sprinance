@@ -1,5 +1,14 @@
 import sys
 import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+
+if os.path.exists("/app"):
+    os.chdir("/app")
+else:
+    os.chdir(project_root)
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app.database import engine, SessionLocal
