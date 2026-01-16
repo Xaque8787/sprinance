@@ -12,7 +12,15 @@ services:
       - RESEND_FROM_EMAIL_DAILY=${RESEND_FROM_EMAIL_DAILY:-}
       - RESEND_FROM_EMAIL_TIPS=${RESEND_FROM_EMAIL_TIPS:-}
     volumes:
-      - ./data:/app/data
+      # Use a named volume for data persistence (recommended)
+      - app_data:/app/data
+
+      # Optional: Uncomment to map reports to host for easy access
+      # Note: If using this, comment out the named volume above and use:
+      # - ./data:/app/data
+      # OR map only specific subdirectories:
+      # - app_data:/app/data
+      # - ./data/reports:/app/data/reports
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5710/"]
@@ -20,3 +28,7 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+
+volumes:
+  app_data:
+    driver: local
