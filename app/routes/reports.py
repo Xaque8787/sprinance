@@ -566,27 +566,40 @@ async def email_daily_balance_report(
             content={"success": False, "message": "Invalid date format"}
         )
 
-    filename = generate_consolidated_daily_balance_csv(db, start_date_obj, end_date_obj, current_user=current_user, source="user")
-
     year = str(start_date_obj.year)
     month = f"{start_date_obj.month:02d}"
-    filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
 
-    if not os.path.exists(filepath):
-        return JSONResponse(
-            status_code=404,
-            content={"success": False, "message": "Report file not found"}
-        )
+    if start_date_obj == end_date_obj:
+        filename = f"{start_date_obj}-daily-balance.csv"
+        filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
 
-    date_range = f"{start_date_obj.strftime('%B %d, %Y')} to {end_date_obj.strftime('%B %d, %Y')}"
-    subject = f"Daily Balance Report - {date_range}"
+        if not os.path.exists(filepath):
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "message": "Report file not found"}
+            )
+
+        date_display = start_date_obj.strftime('%B %d, %Y')
+        subject = f"Daily Balance Report - {date_display}"
+    else:
+        filename = generate_consolidated_daily_balance_csv(db, start_date_obj, end_date_obj, current_user=current_user, source="user")
+        filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
+
+        if not os.path.exists(filepath):
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "message": "Report file not found"}
+            )
+
+        date_display = f"{start_date_obj.strftime('%B %d, %Y')} to {end_date_obj.strftime('%B %d, %Y')}"
+        subject = f"Daily Balance Report - {date_display}"
 
     result = send_report_emails(
         to_emails=email_list,
         report_type="daily",
         report_filepath=filepath,
         subject=subject,
-        date_range=date_range
+        date_range=date_display
     )
 
     if result["success"]:
