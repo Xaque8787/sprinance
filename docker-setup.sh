@@ -29,6 +29,18 @@ EOL
     fi
 
     echo ""
+    echo "Creating data directories..."
+    mkdir -p data/scheduler data/backups data/reports/daily_report data/reports/tip_report
+    # Set permissions for user with UID 1000 (app user in container)
+    if [ "$(id -u)" -eq 0 ]; then
+        chown -R 1000:1000 data
+    else
+        sudo chown -R 1000:1000 data || echo "Warning: Could not set ownership. Run script with sudo if you encounter permission issues."
+    fi
+    chmod -R 755 data
+    echo "Data directories created"
+
+    echo ""
     echo "Building Docker image..."
     docker-compose -f docker-compose.local.yml build
 
@@ -105,6 +117,18 @@ EOL
     if [ "$pull_choice" == "y" ]; then
         docker-compose pull || echo "Pull failed. You may need to build and push the image first."
     fi
+
+    echo ""
+    echo "Creating data directories..."
+    mkdir -p data/scheduler data/backups data/reports/daily_report data/reports/tip_report
+    # Set permissions for user with UID 1000 (app user in container)
+    if [ "$(id -u)" -eq 0 ]; then
+        chown -R 1000:1000 data
+    else
+        sudo chown -R 1000:1000 data || echo "Warning: Could not set ownership. Run script with sudo if you encounter permission issues."
+    fi
+    chmod -R 755 data
+    echo "Data directories created"
 
     echo ""
     echo "Starting container..."

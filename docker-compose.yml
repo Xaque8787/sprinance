@@ -6,7 +6,7 @@ services:
       - "5710:5710"
     environment:
       - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
-      - DATABASE_URL=sqlite:///app/data/database.db
+      - DATABASE_URL=sqlite:///data/database.db
       - TZ=${TZ:-America/Los_Angeles}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - RESEND_FROM_EMAIL_DAILY=${RESEND_FROM_EMAIL_DAILY:-}

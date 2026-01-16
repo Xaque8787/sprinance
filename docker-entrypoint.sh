@@ -6,17 +6,17 @@ echo "Starting Internal Management System"
 echo "=========================================="
 
 # Display version information
-if [ -f /app/.dockerversion ]; then
-    VERSION=$(cat /app/.dockerversion)
+if [ -f .dockerversion ]; then
+    VERSION=$(cat .dockerversion)
     echo "Version: $VERSION"
 fi
 
 # Ensure data directory exists and has proper permissions
 echo "Ensuring data directory exists..."
-mkdir -p /app/data
+mkdir -p data
 
 # Check if database exists and initialize if needed
-if [ ! -f /app/data/database.db ]; then
+if [ ! -f data/database.db ]; then
     echo "Database not found. Initializing with current schema..."
     python3 -c "from app.database import init_db; init_db(); print('Database initialized successfully!')"
 else
@@ -26,7 +26,7 @@ fi
 # Always run migrations to apply any new updates
 echo ""
 echo "Checking for database migrations..."
-python3 /app/run_migrations.py
+python3 run_migrations.py
 
 echo "=========================================="
 echo "Starting application..."
