@@ -32,6 +32,7 @@ RUN mkdir -p data/scheduler \
              data/reports/tip_report \
              migrations/old && \
     chown -R app:app /app && \
+    chmod -R 755 data && \
     chmod +x docker-entrypoint.sh
 
 USER app
