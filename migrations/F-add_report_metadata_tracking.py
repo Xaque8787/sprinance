@@ -11,83 +11,83 @@ New columns:
 - created_by_source: 'user' or 'scheduled_task' to indicate the source
 - edited_by_user_id: Foreign key to users table for tracking edits
 - finalized_at: Timestamp of when the report was finalized
+
+Database Location:
+- Docker: /app/data/database.db
+- Bare metal: <project_root>/data/database.db
+
+Usage:
+    python migrations/F-add_report_metadata_tracking.py
 """
 
-import sqlite3
+import sys
 import os
 
-# Detect environment: Docker vs bare-metal/IDE
-if os.path.exists('/app/data'):
-    DATABASE_DIR = "/app/data"
-else:
-    DATABASE_DIR = "data"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
 
-DATABASE_PATH = os.path.join(DATABASE_DIR, "database.db")
+if os.path.exists("/app"):
+    os.chdir("/app")
+else:
+    os.chdir(project_root)
+
+sys.path.insert(0, project_root)
+
+from sqlalchemy import inspect, text
+from app.database import engine
 
 def migrate():
     """Add metadata tracking columns to daily_balance table"""
-    if not os.path.exists(DATABASE_PATH):
-        print("Database does not exist yet. Migration will be applied on first run.")
+    inspector = inspect(engine)
+
+    # Check if daily_balance table exists
+    if 'daily_balance' not in inspector.get_table_names():
+        print("daily_balance table does not exist yet. Skipping migration.")
         return
 
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
+    columns = [col['name'] for col in inspector.get_columns('daily_balance')]
 
-    try:
-        # Check if daily_balance table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='daily_balance'")
-        if not cursor.fetchone():
-            print("daily_balance table does not exist yet. Skipping migration.")
-            conn.close()
-            return
+    with engine.connect() as conn:
+        try:
+            # Add created_by_user_id column if it doesn't exist
+            if "created_by_user_id" not in columns:
+                conn.execute(text("""
+                    ALTER TABLE daily_balance
+                    ADD COLUMN created_by_user_id INTEGER
+                """))
+                print("✓ Added created_by_user_id column to daily_balance")
 
-        # Check if columns already exist
-        cursor.execute("PRAGMA table_info(daily_balance)")
-        columns = [column[1] for column in cursor.fetchall()]
+            # Add created_by_source column if it doesn't exist
+            if "created_by_source" not in columns:
+                conn.execute(text("""
+                    ALTER TABLE daily_balance
+                    ADD COLUMN created_by_source TEXT DEFAULT 'user'
+                """))
+                print("✓ Added created_by_source column to daily_balance")
 
-        # Add created_by_user_id column if it doesn't exist
-        if "created_by_user_id" not in columns:
-            cursor.execute("""
-                ALTER TABLE daily_balance
-                ADD COLUMN created_by_user_id INTEGER
-                REFERENCES users(id) ON DELETE SET NULL
-            """)
-            print("✓ Added created_by_user_id column to daily_balance")
+            # Add edited_by_user_id column if it doesn't exist
+            if "edited_by_user_id" not in columns:
+                conn.execute(text("""
+                    ALTER TABLE daily_balance
+                    ADD COLUMN edited_by_user_id INTEGER
+                """))
+                print("✓ Added edited_by_user_id column to daily_balance")
 
-        # Add created_by_source column if it doesn't exist
-        if "created_by_source" not in columns:
-            cursor.execute("""
-                ALTER TABLE daily_balance
-                ADD COLUMN created_by_source TEXT DEFAULT 'user'
-            """)
-            print("✓ Added created_by_source column to daily_balance")
+            # Add finalized_at column if it doesn't exist
+            if "finalized_at" not in columns:
+                conn.execute(text("""
+                    ALTER TABLE daily_balance
+                    ADD COLUMN finalized_at TEXT
+                """))
+                print("✓ Added finalized_at column to daily_balance")
 
-        # Add edited_by_user_id column if it doesn't exist
-        if "edited_by_user_id" not in columns:
-            cursor.execute("""
-                ALTER TABLE daily_balance
-                ADD COLUMN edited_by_user_id INTEGER
-                REFERENCES users(id) ON DELETE SET NULL
-            """)
-            print("✓ Added edited_by_user_id column to daily_balance")
+            conn.commit()
+            print("✓ Migration F completed successfully")
 
-        # Add finalized_at column if it doesn't exist
-        if "finalized_at" not in columns:
-            cursor.execute("""
-                ALTER TABLE daily_balance
-                ADD COLUMN finalized_at TEXT
-            """)
-            print("✓ Added finalized_at column to daily_balance")
-
-        conn.commit()
-        print("✓ Migration F completed successfully")
-
-    except Exception as e:
-        conn.rollback()
-        print(f"✗ Migration F failed: {e}")
-        raise
-    finally:
-        conn.close()
+        except Exception as e:
+            conn.rollback()
+            print(f"✗ Migration F failed: {e}")
+            raise
 
 if __name__ == "__main__":
     migrate()
