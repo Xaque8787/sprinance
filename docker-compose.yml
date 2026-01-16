@@ -1,13 +1,13 @@
 services:
   app:
-    image: ghcr.io/xaque8787/roux:latest
+    image: ghcr.io/xaque8787/sprinance:latest
     container_name: management-system
     ports:
       - "5710:5710"
     environment:
       - SECRET_KEY=${SECRET_KEY:-change-this-in-production}
       - DATABASE_URL=sqlite:///app/data/database.db
-      - TZ=America/Los_Angeles
+      - TZ=${TZ:-America/Los_Angeles}
       - RESEND_API_KEY=${RESEND_API_KEY:-}
       - RESEND_FROM_EMAIL_DAILY=${RESEND_FROM_EMAIL_DAILY:-}
       - RESEND_FROM_EMAIL_TIPS=${RESEND_FROM_EMAIL_TIPS:-}
