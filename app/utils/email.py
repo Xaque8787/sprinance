@@ -147,34 +147,6 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
 
                 html += '</tbody></table>'
 
-
-    if report_data.get('details'):
-        html += '<h2>Daily Breakdown</h2>'
-
-        for detail in report_data['details']:
-            html += f'<h3>Employee: {detail.get("employee", "")}</h3>'
-            html += '<table><thead><tr>'
-            html += '<th>Date</th><th>Day</th><th>Bank Card Sales</th><th>Bank Card Tips</th>'
-            html += '<th>Total Sales</th><th>Cash Tips</th><th>Adjustments</th>'
-            html += '<th>Tips on Paycheck</th><th>Tip Out</th><th>Take Home</th>'
-            html += '</tr></thead><tbody>'
-
-            for entry in detail.get('entries', []):
-                html += '<tr>'
-                html += f'<td>{entry.get("date", "")}</td>'
-                html += f'<td>{entry.get("day", "")}</td>'
-                html += f'<td class="text-right">{entry.get("bank_card_sales", "")}</td>'
-                html += f'<td class="text-right">{entry.get("bank_card_tips", "")}</td>'
-                html += f'<td class="text-right">{entry.get("total_sales", "")}</td>'
-                html += f'<td class="text-right">{entry.get("cash_tips", "")}</td>'
-                html += f'<td class="text-right">{entry.get("adjustments", "")}</td>'
-                html += f'<td class="text-right">{entry.get("tips_on_paycheck", "")}</td>'
-                html += f'<td class="text-right">{entry.get("tip_out", "")}</td>'
-                html += f'<td class="text-right highlight"><strong>{entry.get("take_home", "")}</strong></td>'
-                html += '</tr>'
-
-            html += '</tbody></table>'
-
     html += '''
             <div class="footer">
                 <p style="margin: 0;">This is an automated email from your Management System.</p>
