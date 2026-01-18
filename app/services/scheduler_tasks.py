@@ -17,6 +17,11 @@ def calculate_date_range(date_range_type):
     Calculate start and end dates based on the date range type.
     Uses the configured timezone (TZ environment variable) to determine "today".
 
+    For "previous_X_days" ranges, the end date is today (inclusive), and the start
+    date is X-1 days before today, giving exactly X days of data including today.
+
+    Example: "previous_14_days" on Jan 18 returns Jan 5 to Jan 18 (14 days).
+
     Args:
         date_range_type: String like 'previous_day', 'previous_week', 'previous_2_weeks', 'previous_month', etc.
 
@@ -42,14 +47,14 @@ def calculate_date_range(date_range_type):
         end_date = first_of_this_month - timedelta(days=1)
         start_date = end_date.replace(day=1)
     elif date_range_type == 'previous_7_days':
-        end_date = today - timedelta(days=1)
-        start_date = end_date - timedelta(days=6)
+        end_date = today
+        start_date = today - timedelta(days=6)
     elif date_range_type == 'previous_14_days':
-        end_date = today - timedelta(days=1)
-        start_date = end_date - timedelta(days=13)
+        end_date = today
+        start_date = today - timedelta(days=13)
     elif date_range_type == 'previous_30_days':
-        end_date = today - timedelta(days=1)
-        start_date = end_date - timedelta(days=29)
+        end_date = today
+        start_date = today - timedelta(days=29)
     else:
         raise ValueError(f"Unknown date range type: {date_range_type}")
 
