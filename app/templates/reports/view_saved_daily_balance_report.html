@@ -105,14 +105,11 @@
                         <tr>
                             <th>Employee</th>
                             <th>Position</th>
-                            <th>Bank Card Sales</th>
-                            <th>Bank Card Tips</th>
-                            <th>Cash Tips</th>
-                            <th>Total Sales</th>
-                            <th>Adjustments</th>
-                            <th>Tips on Paycheck</th>
-                            <th>Tip Out</th>
-                            <th>Take Home</th>
+                            {% if daily_report.employees and daily_report.employees|length > 0 %}
+                                {% for field in daily_report.employees[0].fields %}
+                                <th>{{ field.name }}</th>
+                                {% endfor %}
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -120,14 +117,9 @@
                         <tr>
                             <td>{{ employee.name }}</td>
                             <td>{{ employee.position }}</td>
-                            <td class="amount">{{ employee.bank_card_sales }}</td>
-                            <td class="amount">{{ employee.bank_card_tips }}</td>
-                            <td class="amount">{{ employee.cash_tips }}</td>
-                            <td class="amount">{{ employee.total_sales }}</td>
-                            <td class="amount">{{ employee.adjustments }}</td>
-                            <td class="amount">{{ employee.tips_on_paycheck }}</td>
-                            <td class="amount">{{ employee.tip_out }}</td>
-                            <td class="amount">{{ employee.take_home }}</td>
+                            {% for field in employee.fields %}
+                            <td class="amount">{{ field.value }}</td>
+                            {% endfor %}
                         </tr>
                         {% endfor %}
                     </tbody>

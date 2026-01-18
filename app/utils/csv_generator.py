@@ -172,6 +172,97 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
 
         writer.writerow([])
 
+        # Employee Summary Section
+        writer.writerow(["EMPLOYEE SUMMARY"])
+        writer.writerow([])
+
+        summary_data = []
+        all_reqs_map = {}
+
+        for employee in employees:
+            entries = db.query(DailyEmployeeEntry).filter(
+                DailyEmployeeEntry.employee_id == employee.id
+            ).join(DailyBalance).filter(
+                DailyBalance.finalized == True,
+                DailyBalance.date >= start_date,
+                DailyBalance.date <= end_date
+            ).all()
+
+            if entries and employee.position.tip_requirements:
+                emp_summary = {"employee": employee.display_name, "position": employee.position.name}
+
+                for req in employee.position.tip_requirements:
+                    if req.field_name not in all_reqs_map:
+                        all_reqs_map[req.field_name] = req.name
+
+                    total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
+                    emp_summary[req.field_name] = total
+
+                emp_summary["num_shifts"] = len(entries)
+                summary_data.append(emp_summary)
+
+        if summary_data:
+            header_row = ["Employee Name", "Position"]
+            for field_name in all_reqs_map.keys():
+                header_row.append(all_reqs_map[field_name])
+            header_row.append("Number of Shifts")
+            writer.writerow(header_row)
+
+            for emp_summary in summary_data:
+                row = [emp_summary["employee"], emp_summary["position"]]
+                for field_name in all_reqs_map.keys():
+                    value = emp_summary.get(field_name, 0)
+                    row.append(f"${value:.2f}")
+                row.append(str(emp_summary["num_shifts"]))
+                writer.writerow(row)
+        else:
+            writer.writerow(["No summary data available for this period"])
+
+        writer.writerow([])
+
+        # Detailed Daily Breakdown
+        writer.writerow(["Detailed Daily Breakdown by Employee"])
+        writer.writerow([])
+
+        for employee in employees:
+            entries = db.query(DailyEmployeeEntry).filter(
+                DailyEmployeeEntry.employee_id == employee.id
+            ).join(DailyBalance).filter(
+                DailyBalance.finalized == True,
+                DailyBalance.date >= start_date,
+                DailyBalance.date <= end_date
+            ).order_by(DailyBalance.date).all()
+
+            if entries and employee.position.tip_requirements:
+                writer.writerow([f"Employee: {employee.display_name} - {employee.position.name}"])
+
+                header_row = ["Date", "Day"]
+                for req in employee.position.tip_requirements:
+                    header_row.append(req.name)
+                writer.writerow(header_row)
+
+                total_row = ["TOTAL", ""]
+                tip_totals = {req.field_name: 0 for req in employee.position.tip_requirements}
+
+                for entry in entries:
+                    row = [
+                        entry.daily_balance.date.strftime("%Y-%m-%d"),
+                        entry.daily_balance.date.strftime("%A")
+                    ]
+
+                    for req in employee.position.tip_requirements:
+                        value = entry.get_tip_value(req.field_name, 0)
+                        row.append(f"${value:.2f}")
+                        tip_totals[req.field_name] += value
+
+                    writer.writerow(row)
+
+                for req in employee.position.tip_requirements:
+                    total_row.append(f"${tip_totals[req.field_name]:.2f}")
+
+                writer.writerow(total_row)
+                writer.writerow([])
+
     return filename
 
 def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_date: date, current_user: Optional[User] = None, source: str = "user") -> str:
