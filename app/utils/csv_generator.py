@@ -351,4 +351,47 @@ def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date
 
                 writer.writerow([])
 
+        # Summary Section
+        writer.writerow(["Summary"])
+        writer.writerow([])
+
+        if employee.position.tip_requirements:
+            for req in employee.position.tip_requirements:
+                total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
+                writer.writerow([f"Total {req.name}", f"${total:.2f}"])
+
+        writer.writerow(["Number of Shifts", str(len(entries))])
+        writer.writerow([])
+
+        # Daily Breakdown
+        writer.writerow(["Daily Breakdown"])
+        writer.writerow([])
+
+        if employee.position.tip_requirements:
+            header_row = ["Date", "Day"]
+            for req in employee.position.tip_requirements:
+                header_row.append(req.name)
+            writer.writerow(header_row)
+
+            total_row = ["TOTAL", ""]
+            tip_totals = {req.field_name: 0 for req in employee.position.tip_requirements}
+
+            for entry in entries:
+                row = [
+                    entry.daily_balance.date.strftime("%Y-%m-%d"),
+                    entry.daily_balance.date.strftime("%A")
+                ]
+
+                for req in employee.position.tip_requirements:
+                    value = entry.get_tip_value(req.field_name, 0)
+                    row.append(f"${value:.2f}")
+                    tip_totals[req.field_name] += value
+
+                writer.writerow(row)
+
+            for req in employee.position.tip_requirements:
+                total_row.append(f"${tip_totals[req.field_name]:.2f}")
+
+            writer.writerow(total_row)
+
     return filename

@@ -343,23 +343,23 @@ def generate_daily_balance_html(report_data: Dict[str, Any]) -> str:
         if daily_report.get('employees'):
             html += '<h3>Employee Breakdown</h3>'
             html += '<table><thead><tr>'
-            html += '<th>Employee</th><th>Position</th><th>Bank Card Sales</th><th>Bank Card Tips</th>'
-            html += '<th>Cash Tips</th><th>Total Sales</th><th>Adjustments</th>'
-            html += '<th>Tips on Paycheck</th><th>Tip Out</th><th>Take Home</th>'
+            html += '<th>Employee</th><th>Position</th>'
+
+            if daily_report['employees'] and len(daily_report['employees']) > 0:
+                first_emp = daily_report['employees'][0]
+                for field in first_emp.get('fields', []):
+                    html += f'<th>{field.get("name", "")}</th>'
+
             html += '</tr></thead><tbody>'
 
             for emp in daily_report['employees']:
                 html += '<tr>'
                 html += f'<td>{emp.get("name", "")}</td>'
                 html += f'<td>{emp.get("position", "")}</td>'
-                html += f'<td class="text-right">{emp.get("bank_card_sales", "")}</td>'
-                html += f'<td class="text-right">{emp.get("bank_card_tips", "")}</td>'
-                html += f'<td class="text-right">{emp.get("cash_tips", "")}</td>'
-                html += f'<td class="text-right">{emp.get("total_sales", "")}</td>'
-                html += f'<td class="text-right">{emp.get("adjustments", "")}</td>'
-                html += f'<td class="text-right">{emp.get("tips_on_paycheck", "")}</td>'
-                html += f'<td class="text-right">{emp.get("tip_out", "")}</td>'
-                html += f'<td class="text-right">{emp.get("take_home", "")}</td>'
+
+                for field in emp.get('fields', []):
+                    html += f'<td class="text-right">{field.get("value", "")}</td>'
+
                 html += '</tr>'
 
             html += '</tbody></table>'

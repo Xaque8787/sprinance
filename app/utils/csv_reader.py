@@ -161,50 +161,52 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
                         'fields': payroll_fields
                     })
             elif row and len(row) > 0 and row[0] == "Summary":
-                summary_data = {}
+                summary_fields = []
                 for j in range(i + 1, len(rows)):
                     if not rows[j] or len(rows[j]) < 2:
                         break
                     key = rows[j][0].strip()
                     value = rows[j][1].strip()
                     if key:
-                        summary_data[key] = value
+                        summary_fields.append({
+                            'name': key,
+                            'value': value
+                        })
 
-                if summary_data:
+                if summary_fields:
                     report_data['summary'].append({
                         'employee_name': employee_name,
                         'position': employee_position,
-                        'bank_card_tips': summary_data.get('Total Bank Card Tips', ''),
-                        'cash_tips': summary_data.get('Total Cash Tips', ''),
-                        'adjustments': summary_data.get('Total Adjustments', ''),
-                        'tips_on_paycheck': summary_data.get('Total Tips on Paycheck', ''),
-                        'tip_out': summary_data.get('Total Tip Out', ''),
-                        'take_home': summary_data.get('Total Take Home', ''),
-                        'num_shifts': summary_data.get('Number of Shifts', '')
+                        'fields': summary_fields
                     })
                 break
 
         for i, row in enumerate(rows):
             if row and len(row) > 0 and row[0] == "Daily Breakdown":
+                headers = []
                 if i + 1 < len(rows) and rows[i + 1] and rows[i + 1][0] == "Date":
+                    headers = rows[i + 1]
                     entries = []
                     for j in range(i + 2, len(rows)):
-                        if not rows[j] or len(rows[j]) < 10:
+                        if not rows[j] or len(rows[j]) < 2:
                             break
                         if rows[j][0] == "TOTAL":
                             break
-                        entries.append({
+
+                        entry = {
                             'date': rows[j][0].strip(),
                             'day': rows[j][1].strip() if len(rows[j]) > 1 else '',
-                            'bank_card_sales': rows[j][2].strip() if len(rows[j]) > 2 else '',
-                            'bank_card_tips': rows[j][3].strip() if len(rows[j]) > 3 else '',
-                            'total_sales': rows[j][4].strip() if len(rows[j]) > 4 else '',
-                            'cash_tips': rows[j][5].strip() if len(rows[j]) > 5 else '',
-                            'adjustments': rows[j][6].strip() if len(rows[j]) > 6 else '',
-                            'tips_on_paycheck': rows[j][7].strip() if len(rows[j]) > 7 else '',
-                            'tip_out': rows[j][8].strip() if len(rows[j]) > 8 else '',
-                            'take_home': rows[j][9].strip() if len(rows[j]) > 9 else ''
-                        })
+                            'fields': []
+                        }
+
+                        for k in range(2, len(headers)):
+                            if k < len(rows[j]):
+                                entry['fields'].append({
+                                    'name': headers[k].strip(),
+                                    'value': rows[j][k].strip()
+                                })
+
+                        entries.append(entry)
 
                     if entries:
                         report_data['details'].append({
@@ -266,31 +268,36 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
                 report_data['payroll_summary'].append(entry)
 
     if summary_start is not None:
-        # Skip to the row with "Employee Name" header
         header_idx = summary_start + 2
+        summary_headers = []
         if header_idx < len(rows) and rows[header_idx] and rows[header_idx][0] == "Employee Name":
+            summary_headers = rows[header_idx]
             for i in range(header_idx + 1, len(rows)):
                 row = rows[i]
                 if not row or len(row) == 0:
                     break
                 if row[0] == '' or 'Detailed' in str(row[0]):
                     break
-                if len(row) >= 9 and row[0].strip():
-                    report_data['summary'].append({
+                if len(row) >= 2 and row[0].strip():
+                    summary_entry = {
                         'employee_name': row[0].strip(),
                         'position': row[1].strip() if len(row) > 1 else '',
-                        'bank_card_tips': row[2].strip() if len(row) > 2 else '',
-                        'cash_tips': row[3].strip() if len(row) > 3 else '',
-                        'adjustments': row[4].strip() if len(row) > 4 else '',
-                        'tips_on_paycheck': row[5].strip() if len(row) > 5 else '',
-                        'tip_out': row[6].strip() if len(row) > 6 else '',
-                        'take_home': row[7].strip() if len(row) > 7 else '',
-                        'num_shifts': row[8].strip() if len(row) > 8 else ''
-                    })
+                        'fields': []
+                    }
+
+                    for j in range(2, len(summary_headers)):
+                        if j < len(row):
+                            summary_entry['fields'].append({
+                                'name': summary_headers[j].strip(),
+                                'value': row[j].strip()
+                            })
+
+                    report_data['summary'].append(summary_entry)
 
     if details_start is not None:
         current_employee = None
         current_entries = []
+        detail_headers = []
 
         for i in range(details_start + 2, len(rows)):
             row = rows[i]
@@ -315,23 +322,26 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
                 current_employee = cell_value.replace('Employee: ', '')
                 current_entries = []
             elif cell_value == 'Date':
+                detail_headers = row
                 continue
             elif cell_value == 'TOTAL':
                 continue
             elif current_employee and cell_value:
-                if len(row) >= 10:
-                    current_entries.append({
+                if len(row) >= 2:
+                    entry = {
                         'date': row[0].strip(),
                         'day': row[1].strip() if len(row) > 1 else '',
-                        'bank_card_sales': row[2].strip() if len(row) > 2 else '',
-                        'bank_card_tips': row[3].strip() if len(row) > 3 else '',
-                        'total_sales': row[4].strip() if len(row) > 4 else '',
-                        'cash_tips': row[5].strip() if len(row) > 5 else '',
-                        'adjustments': row[6].strip() if len(row) > 6 else '',
-                        'tips_on_paycheck': row[7].strip() if len(row) > 7 else '',
-                        'tip_out': row[8].strip() if len(row) > 8 else '',
-                        'take_home': row[9].strip() if len(row) > 9 else ''
-                    })
+                        'fields': []
+                    }
+
+                    for k in range(2, len(detail_headers)):
+                        if k < len(row):
+                            entry['fields'].append({
+                                'name': detail_headers[k].strip(),
+                                'value': row[k].strip()
+                            })
+
+                    current_entries.append(entry)
 
         if current_employee and current_entries:
             report_data['details'].append({
@@ -470,25 +480,29 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
             if i < len(rows) and rows[i] and rows[i][0] == 'Employee Breakdown':
                 i += 1
 
+                employee_headers = []
                 if i < len(rows) and rows[i] and rows[i][0] == 'Employee Name':
+                    employee_headers = rows[i]
                     i += 1
 
-                while i < len(rows) and rows[i] and len(rows[i]) >= 10:
+                while i < len(rows) and rows[i] and len(rows[i]) >= 2:
                     if rows[i][0] in ['', '=' * 80] or rows[i][0].startswith('Date: '):
                         break
 
-                    daily_report['employees'].append({
-                        'name': rows[i][0],
-                        'position': rows[i][1],
-                        'bank_card_sales': rows[i][2],
-                        'bank_card_tips': rows[i][3],
-                        'cash_tips': rows[i][4],
-                        'total_sales': rows[i][5],
-                        'adjustments': rows[i][6],
-                        'tips_on_paycheck': rows[i][7],
-                        'tip_out': rows[i][8],
-                        'take_home': rows[i][9]
-                    })
+                    employee_entry = {
+                        'name': rows[i][0] if len(rows[i]) > 0 else '',
+                        'position': rows[i][1] if len(rows[i]) > 1 else '',
+                        'fields': []
+                    }
+
+                    for j in range(2, len(employee_headers)):
+                        if j < len(rows[i]):
+                            employee_entry['fields'].append({
+                                'name': employee_headers[j].strip(),
+                                'value': rows[i][j].strip()
+                            })
+
+                    daily_report['employees'].append(employee_entry)
                     i += 1
 
             print(f"\nDEBUG: Built daily_report object:", flush=True)
