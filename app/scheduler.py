@@ -74,7 +74,9 @@ def get_next_run_times(schedule_type, cron_expression=None, interval_value=None,
                 next_run = trigger.get_next_fire_time(None, current)
                 if next_run:
                     next_runs.append(next_run)
-                    current = next_run + timedelta(seconds=1)
+                    # Move forward by 1 hour to safely skip past the current trigger
+                    # This avoids DST boundary issues that can occur with small increments
+                    current = next_run + timedelta(hours=1)
                 else:
                     break
 
