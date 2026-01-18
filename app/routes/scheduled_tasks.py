@@ -517,13 +517,17 @@ def add_job_to_scheduler(
         raise ValueError(f"Unknown task type: {task_type}")
 
     if schedule_type == "cron":
+        import os
+        TIMEZONE = os.getenv('TZ', 'America/Los_Angeles')
+        tz = pytz.timezone(TIMEZONE)
         parts = cron_expression.split()
         trigger = CronTrigger(
             minute=parts[0],
             hour=parts[1],
             day=parts[2],
             month=parts[3],
-            day_of_week=parts[4]
+            day_of_week=parts[4],
+            timezone=tz
         )
     elif schedule_type == "interval":
         kwargs = {interval_unit: interval_value}

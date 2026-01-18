@@ -279,10 +279,11 @@ async def employee_tip_report(
         DailyBalance.date <= end_date_obj
     ).order_by(DailyBalance.date.desc()).all()
 
-    total_bank_card_tips = sum(entry.bank_card_tips or 0 for entry in entries)
-    total_cash_tips = sum(entry.cash_tips or 0 for entry in entries)
-    total_adjustments = sum(entry.adjustments or 0 for entry in entries)
-    total_take_home = sum(entry.calculated_take_home or 0 for entry in entries)
+    tip_totals = {}
+    if employee.position.tip_requirements:
+        for req in employee.position.tip_requirements:
+            total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
+            tip_totals[req.field_name] = total
 
     prev_month = target_date - relativedelta(months=1)
     next_month = target_date + relativedelta(months=1)
@@ -299,10 +300,7 @@ async def employee_tip_report(
             "current_month": target_date,
             "prev_month": prev_month,
             "next_month": next_month,
-            "total_bank_card_tips": total_bank_card_tips,
-            "total_cash_tips": total_cash_tips,
-            "total_adjustments": total_adjustments,
-            "total_take_home": total_take_home,
+            "tip_totals": tip_totals,
             "is_custom_range": bool(start_date and end_date)
         }
     )

@@ -74,33 +74,28 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
         writer.writerow([])
 
+        all_requirements = []
+        requirement_map = {}
+        for entry in employee_entries:
+            for req in entry.employee.position.tip_requirements:
+                if req.field_name not in requirement_map:
+                    requirement_map[req.field_name] = req.name
+                    all_requirements.append(req)
+
+        all_requirements.sort(key=lambda r: r.display_order)
+
         writer.writerow(["Employee Breakdown"])
-        writer.writerow([
-            "Employee Name",
-            "Position",
-            "Bank Card Sales",
-            "Bank Card Tips",
-            "Cash Tips",
-            "Total Sales",
-            "Adjustments",
-            "Tips on Paycheck",
-            "Tip Out",
-            "Take-Home Tips"
-        ])
+        header_row = ["Employee Name", "Position"]
+        for req in all_requirements:
+            header_row.append(req.name)
+        writer.writerow(header_row)
 
         for entry in employee_entries:
-            writer.writerow([
-                entry.employee.display_name,
-                entry.employee.position.name,
-                f"${entry.bank_card_sales:.2f}",
-                f"${entry.bank_card_tips:.2f}",
-                f"${entry.cash_tips:.2f}",
-                f"${entry.total_sales:.2f}",
-                f"${entry.adjustments:.2f}",
-                f"${entry.tips_on_paycheck:.2f}",
-                f"${entry.tip_out:.2f}",
-                f"${entry.calculated_take_home:.2f}"
-            ])
+            row = [entry.employee.display_name, entry.employee.position.name]
+            for req in all_requirements:
+                value = entry.get_tip_value(req.field_name, 0.0)
+                row.append(f"${value:.2f}")
+            writer.writerow(row)
 
     return filepath
 
@@ -176,22 +171,13 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
             writer.writerow(["No payroll summary data available for this period"])
 
         writer.writerow([])
-        writer.writerow([])
 
-        # Regular Summary Section
+        # Employee Summary Section
         writer.writerow(["EMPLOYEE SUMMARY"])
         writer.writerow([])
-        writer.writerow([
-            "Employee Name",
-            "Position",
-            "Total Bank Card Tips",
-            "Total Cash Tips",
-            "Total Adjustments",
-            "Total Tips on Paycheck",
-            "Total Tip Out",
-            "Total Take Home",
-            "Number of Shifts"
-        ])
+
+        summary_data = []
+        all_reqs_map = {}
 
         for employee in employees:
             entries = db.query(DailyEmployeeEntry).filter(
@@ -202,28 +188,39 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
                 DailyBalance.date <= end_date
             ).all()
 
-            if entries:
-                total_bank_card_tips = sum(entry.bank_card_tips or 0 for entry in entries)
-                total_cash_tips = sum(entry.cash_tips or 0 for entry in entries)
-                total_adjustments = sum(entry.adjustments or 0 for entry in entries)
-                total_tips_on_paycheck = sum(entry.tips_on_paycheck or 0 for entry in entries)
-                total_tip_out = sum(entry.tip_out or 0 for entry in entries)
-                total_take_home = sum(entry.calculated_take_home or 0 for entry in entries)
-                num_shifts = len(entries)
+            if entries and employee.position.tip_requirements:
+                emp_summary = {"employee": employee.display_name, "position": employee.position.name}
 
-                writer.writerow([
-                    employee.display_name,
-                    employee.position.name,
-                    f"${total_bank_card_tips:.2f}",
-                    f"${total_cash_tips:.2f}",
-                    f"${total_adjustments:.2f}",
-                    f"${total_tips_on_paycheck:.2f}",
-                    f"${total_tip_out:.2f}",
-                    f"${total_take_home:.2f}",
-                    num_shifts
-                ])
+                for req in employee.position.tip_requirements:
+                    if req.field_name not in all_reqs_map:
+                        all_reqs_map[req.field_name] = req.name
+
+                    total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
+                    emp_summary[req.field_name] = total
+
+                emp_summary["num_shifts"] = len(entries)
+                summary_data.append(emp_summary)
+
+        if summary_data:
+            header_row = ["Employee Name", "Position"]
+            for field_name in all_reqs_map.keys():
+                header_row.append(all_reqs_map[field_name])
+            header_row.append("Number of Shifts")
+            writer.writerow(header_row)
+
+            for emp_summary in summary_data:
+                row = [emp_summary["employee"], emp_summary["position"]]
+                for field_name in all_reqs_map.keys():
+                    value = emp_summary.get(field_name, 0)
+                    row.append(f"${value:.2f}")
+                row.append(str(emp_summary["num_shifts"]))
+                writer.writerow(row)
+        else:
+            writer.writerow(["No summary data available for this period"])
 
         writer.writerow([])
+
+        # Detailed Daily Breakdown
         writer.writerow(["Detailed Daily Breakdown by Employee"])
         writer.writerow([])
 
@@ -236,52 +233,34 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
                 DailyBalance.date <= end_date
             ).order_by(DailyBalance.date).all()
 
-            if entries:
+            if entries and employee.position.tip_requirements:
                 writer.writerow([f"Employee: {employee.display_name} - {employee.position.name}"])
-                writer.writerow([
-                    "Date",
-                    "Day",
-                    "Bank Card Sales",
-                    "Bank Card Tips",
-                    "Total Sales",
-                    "Cash Tips",
-                    "Adjustments",
-                    "Tips on Paycheck",
-                    "Tip Out",
-                    "Take Home"
-                ])
+
+                header_row = ["Date", "Day"]
+                for req in employee.position.tip_requirements:
+                    header_row.append(req.name)
+                writer.writerow(header_row)
+
+                total_row = ["TOTAL", ""]
+                tip_totals = {req.field_name: 0 for req in employee.position.tip_requirements}
 
                 for entry in entries:
-                    writer.writerow([
-                        entry.daily_balance.date,
-                        entry.daily_balance.day_of_week,
-                        f"${entry.bank_card_sales:.2f}",
-                        f"${entry.bank_card_tips:.2f}",
-                        f"${entry.total_sales:.2f}",
-                        f"${entry.cash_tips:.2f}",
-                        f"${entry.adjustments:.2f}",
-                        f"${entry.tips_on_paycheck:.2f}",
-                        f"${entry.tip_out:.2f}",
-                        f"${entry.calculated_take_home:.2f}"
-                    ])
+                    row = [
+                        entry.daily_balance.date.strftime("%Y-%m-%d"),
+                        entry.daily_balance.date.strftime("%A")
+                    ]
 
-                total_bank_card_tips = sum(entry.bank_card_tips or 0 for entry in entries)
-                total_cash_tips = sum(entry.cash_tips or 0 for entry in entries)
-                total_adjustments = sum(entry.adjustments or 0 for entry in entries)
-                total_tips_on_paycheck = sum(entry.tips_on_paycheck or 0 for entry in entries)
-                total_take_home = sum(entry.calculated_take_home or 0 for entry in entries)
+                    for req in employee.position.tip_requirements:
+                        value = entry.get_tip_value(req.field_name, 0)
+                        row.append(f"${value:.2f}")
+                        tip_totals[req.field_name] += value
 
-                writer.writerow([
-                    "TOTAL",
-                    "",
-                    "",
-                    f"${total_bank_card_tips:.2f}",
-                    "",
-                    f"${total_cash_tips:.2f}",
-                    f"${total_adjustments:.2f}",
-                    f"${total_tips_on_paycheck:.2f}",
-                    f"${total_take_home:.2f}"
-                ])
+                    writer.writerow(row)
+
+                for req in employee.position.tip_requirements:
+                    total_row.append(f"${tip_totals[req.field_name]:.2f}")
+
+                writer.writerow(total_row)
                 writer.writerow([])
 
     return filename
@@ -361,34 +340,30 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
             writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
             writer.writerow([])
 
-            writer.writerow(["Employee Breakdown"])
-            writer.writerow([
-                "Employee Name",
-                "Position",
-                "Bank Card Sales",
-                "Bank Card Tips",
-                "Cash Tips",
-                "Total Sales",
-                "Adjustments",
-                "Tips on Paycheck",
-                "Tip Out",
-                "Take-Home Tips"
-            ])
-
             sorted_entries = sorted(daily_balance.employee_entries, key=lambda e: (e.employee.last_name or '', e.employee.first_name or ''))
+
+            all_requirements = []
+            requirement_map = {}
             for entry in sorted_entries:
-                writer.writerow([
-                    entry.employee.display_name,
-                    entry.employee.position.name,
-                    f"${entry.bank_card_sales:.2f}",
-                    f"${entry.bank_card_tips:.2f}",
-                    f"${entry.cash_tips:.2f}",
-                    f"${entry.total_sales:.2f}",
-                    f"${entry.adjustments:.2f}",
-                    f"${entry.tips_on_paycheck:.2f}",
-                    f"${entry.tip_out:.2f}",
-                    f"${entry.calculated_take_home:.2f}"
-                ])
+                for req in entry.employee.position.tip_requirements:
+                    if req.field_name not in requirement_map:
+                        requirement_map[req.field_name] = req.name
+                        all_requirements.append(req)
+
+            all_requirements.sort(key=lambda r: r.display_order)
+
+            writer.writerow(["Employee Breakdown"])
+            header_row = ["Employee Name", "Position"]
+            for req in all_requirements:
+                header_row.append(req.name)
+            writer.writerow(header_row)
+
+            for entry in sorted_entries:
+                row = [entry.employee.display_name, entry.employee.position.name]
+                for req in all_requirements:
+                    value = entry.get_tip_value(req.field_name, 0.0)
+                    row.append(f"${value:.2f}")
+                writer.writerow(row)
 
             writer.writerow([])
             writer.writerow(["=" * 80])
@@ -466,66 +441,48 @@ def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date
                     writer.writerow([req.name, f"${total:.2f}"])
 
                 writer.writerow([])
-                writer.writerow([])
 
-        total_bank_card_tips = sum(entry.bank_card_tips or 0 for entry in entries)
-        total_cash_tips = sum(entry.cash_tips or 0 for entry in entries)
-        total_adjustments = sum(entry.adjustments or 0 for entry in entries)
-        total_tips_on_paycheck = sum(entry.tips_on_paycheck or 0 for entry in entries)
-        total_tip_out = sum(entry.tip_out or 0 for entry in entries)
-        total_take_home = sum(entry.calculated_take_home or 0 for entry in entries)
-        num_shifts = len(entries)
-
+        # Summary Section
         writer.writerow(["Summary"])
-        writer.writerow(["Total Bank Card Tips", f"${total_bank_card_tips:.2f}"])
-        writer.writerow(["Total Cash Tips", f"${total_cash_tips:.2f}"])
-        writer.writerow(["Total Adjustments", f"${total_adjustments:.2f}"])
-        writer.writerow(["Total Tips on Paycheck", f"${total_tips_on_paycheck:.2f}"])
-        writer.writerow(["Total Tip Out", f"${total_tip_out:.2f}"])
-        writer.writerow(["Total Take Home", f"${total_take_home:.2f}"])
-        writer.writerow(["Number of Shifts", num_shifts])
         writer.writerow([])
 
+        if employee.position.tip_requirements:
+            for req in employee.position.tip_requirements:
+                total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
+                writer.writerow([f"Total {req.name}", f"${total:.2f}"])
+
+        writer.writerow(["Number of Shifts", str(len(entries))])
+        writer.writerow([])
+
+        # Daily Breakdown
         writer.writerow(["Daily Breakdown"])
-        writer.writerow([
-            "Date",
-            "Day",
-            "Bank Card Sales",
-            "Bank Card Tips",
-            "Total Sales",
-            "Cash Tips",
-            "Adjustments",
-            "Tips on Paycheck",
-            "Tip Out",
-            "Take Home"
-        ])
-
-        for entry in entries:
-            writer.writerow([
-                entry.daily_balance.date,
-                entry.daily_balance.day_of_week,
-                f"${entry.bank_card_sales:.2f}",
-                f"${entry.bank_card_tips:.2f}",
-                f"${entry.total_sales:.2f}",
-                f"${entry.cash_tips:.2f}",
-                f"${entry.adjustments:.2f}",
-                f"${entry.tips_on_paycheck:.2f}",
-                f"${entry.tip_out:.2f}",
-                f"${entry.calculated_take_home:.2f}"
-            ])
-
         writer.writerow([])
-        writer.writerow([
-            "TOTAL",
-            "",
-            "",
-            f"${total_bank_card_tips:.2f}",
-            "",
-            f"${total_cash_tips:.2f}",
-            f"${total_adjustments:.2f}",
-            f"${total_tips_on_paycheck:.2f}",
-            f"${total_tip_out:.2f}",
-            f"${total_take_home:.2f}"
-        ])
+
+        if employee.position.tip_requirements:
+            header_row = ["Date", "Day"]
+            for req in employee.position.tip_requirements:
+                header_row.append(req.name)
+            writer.writerow(header_row)
+
+            total_row = ["TOTAL", ""]
+            tip_totals = {req.field_name: 0 for req in employee.position.tip_requirements}
+
+            for entry in entries:
+                row = [
+                    entry.daily_balance.date.strftime("%Y-%m-%d"),
+                    entry.daily_balance.date.strftime("%A")
+                ]
+
+                for req in employee.position.tip_requirements:
+                    value = entry.get_tip_value(req.field_name, 0)
+                    row.append(f"${value:.2f}")
+                    tip_totals[req.field_name] += value
+
+                writer.writerow(row)
+
+            for req in employee.position.tip_requirements:
+                total_row.append(f"${tip_totals[req.field_name]:.2f}")
+
+            writer.writerow(total_row)
 
     return filename

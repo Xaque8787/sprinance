@@ -139,26 +139,9 @@ def save_daily_balance_data(
                             total += value
                 tip_values[req.field_name] = total
 
-        bank_card_sales = tip_values.get("bank_card_sales", 0.0)
-        bank_card_tips = tip_values.get("bank_card_tips", 0.0)
-        cash_tips = tip_values.get("cash_tips", 0.0)
-        total_sales = tip_values.get("total_sales", 0.0)
-        adjustments = tip_values.get("adjustments", 0.0)
-        tips_on_paycheck = tip_values.get("tips_on_paycheck", 0.0)
-        tip_out = tip_values.get("tip_out", 0.0)
-        calculated_take_home = tip_values.get("calculated_take_home", bank_card_tips + cash_tips + adjustments - tips_on_paycheck - tip_out)
-
         entry = DailyEmployeeEntry(
             daily_balance_id=daily_balance.id,
             employee_id=emp_id,
-            bank_card_sales=bank_card_sales,
-            bank_card_tips=bank_card_tips,
-            cash_tips=cash_tips,
-            total_sales=total_sales,
-            adjustments=adjustments,
-            tips_on_paycheck=tips_on_paycheck,
-            tip_out=tip_out,
-            calculated_take_home=calculated_take_home,
             tip_values=tip_values
         )
         db.add(entry)
@@ -203,7 +186,9 @@ def serialize_employee(emp, db):
                     "include_in_payroll_summary": req.include_in_payroll_summary
                 } for req in emp.position.tip_requirements
             ]
-        }
+        },
+        "position_name_sort_key": emp.position.name,
+        "display_name_sort_key": emp.display_name
     }
 
 @router.get("/daily-balance", response_class=HTMLResponse)
@@ -226,6 +211,9 @@ async def daily_balance_page(
     daily_balance = db.query(DailyBalance).filter(DailyBalance.date == target_date).first()
 
     all_employees = db.query(Employee).all()
+    # Sort all employees by position name, then by display name
+    all_employees = sorted(all_employees, key=lambda emp: (emp.position.name, emp.display_name))
+
     scheduled_employees = [emp for emp in all_employees if day_of_week in emp.scheduled_days]
 
     employee_entries = {}
@@ -238,6 +226,9 @@ async def daily_balance_page(
         working_employees = [entry.employee for entry in daily_balance.employee_entries]
     else:
         working_employees = scheduled_employees
+
+    # Sort employees by position name, then by display name
+    working_employees = sorted(working_employees, key=lambda emp: (emp.position.name, emp.display_name))
 
     for emp in working_employees:
         attach_display_orders_to_employee(emp, db)

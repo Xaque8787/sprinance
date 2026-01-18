@@ -45,22 +45,14 @@
     </div>
 
     <div class="summary-cards">
-        <div class="summary-card">
-            <h3>Total Bank Card Tips</h3>
-            <p class="summary-value">${{ "%.2f"|format(total_bank_card_tips) }}</p>
-        </div>
-        <div class="summary-card">
-            <h3>Total Cash Tips</h3>
-            <p class="summary-value">${{ "%.2f"|format(total_cash_tips) }}</p>
-        </div>
-        <div class="summary-card">
-            <h3>Total Adjustments</h3>
-            <p class="summary-value">${{ "%.2f"|format(total_adjustments) }}</p>
-        </div>
-        <div class="summary-card highlight">
-            <h3>Total Take Home</h3>
-            <p class="summary-value">${{ "%.2f"|format(total_take_home) }}</p>
-        </div>
+        {% for req in employee.position.tip_requirements %}
+            {% if req.field_name in tip_totals %}
+                <div class="summary-card {% if req.is_total %}highlight{% endif %}">
+                    <h3>Total {{ req.name }}</h3>
+                    <p class="summary-value">${{ "%.2f"|format(tip_totals[req.field_name]) }}</p>
+                </div>
+            {% endif %}
+        {% endfor %}
     </div>
 
     {% if entries %}
@@ -71,12 +63,9 @@
                 <tr>
                     <th>Date</th>
                     <th>Day</th>
-                    <th>Bank Card Sales</th>
-                    <th>Bank Card Tips</th>
-                    <th>Total Sales</th>
-                    <th>Cash Tips</th>
-                    <th>Adjustments</th>
-                    <th>Take Home</th>
+                    {% for req in employee.position.tip_requirements %}
+                        <th>{{ req.name }}</th>
+                    {% endfor %}
                 </tr>
             </thead>
             <tbody>
@@ -84,23 +73,18 @@
                 <tr>
                     <td>{{ entry.daily_balance.date.strftime('%Y-%m-%d') }}</td>
                     <td>{{ entry.daily_balance.date.strftime('%A') }}</td>
-                    <td>${{ "%.2f"|format(entry.bank_card_sales or 0) }}</td>
-                    <td>${{ "%.2f"|format(entry.bank_card_tips or 0) }}</td>
-                    <td>${{ "%.2f"|format(entry.total_sales or 0) }}</td>
-                    <td>${{ "%.2f"|format(entry.cash_tips or 0) }}</td>
-                    <td>${{ "%.2f"|format(entry.adjustments or 0) }}</td>
-                    <td class="highlight-cell">${{ "%.2f"|format(entry.calculated_take_home or 0) }}</td>
+                    {% for req in employee.position.tip_requirements %}
+                        <td {% if req.is_total %}class="highlight-cell"{% endif %}>${{ "%.2f"|format(entry.get_tip_value(req.field_name, 0)) }}</td>
+                    {% endfor %}
                 </tr>
                 {% endfor %}
             </tbody>
             <tfoot>
                 <tr class="totals-row">
-                    <td colspan="3"><strong>Totals</strong></td>
-                    <td><strong>${{ "%.2f"|format(total_bank_card_tips) }}</strong></td>
-                    <td></td>
-                    <td><strong>${{ "%.2f"|format(total_cash_tips) }}</strong></td>
-                    <td><strong>${{ "%.2f"|format(total_adjustments) }}</strong></td>
-                    <td class="highlight-cell"><strong>${{ "%.2f"|format(total_take_home) }}</strong></td>
+                    <td colspan="2"><strong>Totals</strong></td>
+                    {% for req in employee.position.tip_requirements %}
+                        <td {% if req.is_total %}class="highlight-cell"{% endif %}><strong>${{ "%.2f"|format(tip_totals.get(req.field_name, 0)) }}</strong></td>
+                    {% endfor %}
                 </tr>
             </tfoot>
         </table>

@@ -315,8 +315,15 @@
         {% endif %}
 
         <div id="employee-entries">
+            {% set current_position = namespace(name='') %}
             {% for emp in working_employees %}
-            <div class="employee-entry" id="entry-{{ emp.id }}" data-employee-id="{{ emp.id }}">
+                {% if emp.position.name != current_position.name %}
+                    <div class="position-group-header" data-position-name="{{ emp.position.name }}">
+                        <h5>{{ emp.position.name }}</h5>
+                    </div>
+                    {% set current_position.name = emp.position.name %}
+                {% endif %}
+            <div class="employee-entry" id="entry-{{ emp.id }}" data-employee-id="{{ emp.id }}" data-position-id="{{ emp.position.id }}" data-position-name="{{ emp.position.name }}" data-display-name="{{ emp.display_name }}">
                 <div class="employee-entry-header">
                     <h4>{{ emp.display_name }} - {{ emp.position.name }}</h4>
                     {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
@@ -435,14 +442,32 @@ function updateAddEmployeeDropdown() {
 
     select.innerHTML = '<option value="">Select an employee...</option>';
 
+    // Group employees by position
+    const employeesByPosition = {};
     allEmployees.forEach(emp => {
         if (!currentEmployeeIds.has(emp.id)) {
+            if (!employeesByPosition[emp.position.name]) {
+                employeesByPosition[emp.position.name] = [];
+            }
+            employeesByPosition[emp.position.name].push(emp);
+        }
+    });
+
+    // Add employees grouped by position using optgroups
+    const positionNames = Object.keys(employeesByPosition).sort();
+    positionNames.forEach(positionName => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = positionName;
+
+        employeesByPosition[positionName].forEach(emp => {
             const option = document.createElement('option');
             option.value = emp.id;
-            option.textContent = `${emp.display_name} (${emp.position.name})`;
+            option.textContent = emp.display_name;
             option.dataset.employee = JSON.stringify(emp);
-            select.appendChild(option);
-        }
+            optgroup.appendChild(option);
+        });
+
+        select.appendChild(optgroup);
     });
 }
 
@@ -477,6 +502,9 @@ function addEmployeeEntry(emp) {
     entryDiv.className = 'employee-entry';
     entryDiv.id = `entry-${emp.id}`;
     entryDiv.dataset.employeeId = emp.id;
+    entryDiv.dataset.positionId = emp.position.id;
+    entryDiv.dataset.positionName = emp.position.name;
+    entryDiv.dataset.displayName = emp.display_name;
 
     let tipFields = '';
     emp.position.tip_requirements.forEach(req => {
@@ -533,11 +561,63 @@ function addEmployeeEntry(emp) {
         </div>
     `;
 
-    container.appendChild(entryDiv);
+    // Find the correct insertion point based on position and display name
+    const existingEntries = Array.from(container.querySelectorAll('.employee-entry'));
+    let insertBeforeElement = null;
+
+    for (const existingEntry of existingEntries) {
+        const existingPositionName = existingEntry.dataset.positionName;
+        const existingDisplayName = existingEntry.dataset.displayName;
+
+        // Compare position names first
+        if (existingPositionName > emp.position.name) {
+            insertBeforeElement = existingEntry;
+            break;
+        } else if (existingPositionName === emp.position.name) {
+            // Same position, compare display names
+            if (existingDisplayName > emp.display_name) {
+                insertBeforeElement = existingEntry;
+                break;
+            }
+        }
+    }
+
+    if (insertBeforeElement) {
+        container.insertBefore(entryDiv, insertBeforeElement);
+    } else {
+        container.appendChild(entryDiv);
+    }
 
     attachEmployeeInputListeners(entryDiv);
     calculateEmployeeTipTotals(emp.id);
+    updatePositionHeaders();
     updateEmployeeTipsInFinancialTables();
+}
+
+function updatePositionHeaders() {
+    const container = document.getElementById('employee-entries');
+
+    // Remove all existing position headers
+    container.querySelectorAll('.position-group-header').forEach(header => header.remove());
+
+    // Get all employee entries
+    const entries = Array.from(container.querySelectorAll('.employee-entry'));
+
+    let lastPositionName = '';
+    entries.forEach(entry => {
+        const positionName = entry.dataset.positionName;
+
+        // If this is a new position group, add a header before this entry
+        if (positionName !== lastPositionName) {
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'position-group-header';
+            headerDiv.dataset.positionName = positionName;
+            headerDiv.innerHTML = `<h5>${positionName}</h5>`;
+
+            container.insertBefore(headerDiv, entry);
+            lastPositionName = positionName;
+        }
+    });
 }
 
 function removeEmployee(employeeId) {
@@ -545,6 +625,7 @@ function removeEmployee(employeeId) {
         const entry = document.getElementById(`entry-${employeeId}`);
         if (entry) {
             entry.remove();
+            updatePositionHeaders();
             updateEmployeeTipsInFinancialTables();
             calculateFinancialTotals();
         }
@@ -643,6 +724,18 @@ function attachEmployeeInputListeners(container) {
             const employeeId = this.dataset.employeeId;
             calculateEmployeeTipTotals(employeeId);
             updateEmployeeTipsInFinancialTables();
+        });
+        // Add select-on-focus behavior
+        input.addEventListener('focus', function() {
+            this.select();
+        });
+    });
+}
+
+function addSelectOnFocusBehavior(inputs) {
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.select();
         });
     });
 }
@@ -839,6 +932,10 @@ async function addFinancialTemplate() {
 
         const inputField = newRow.querySelector(`.${fieldClass}`);
         inputField.addEventListener('input', calculateFinancialTotals);
+        // Add select-on-focus behavior to the new input
+        inputField.addEventListener('focus', function() {
+            this.select();
+        });
 
         nameInput.value = '';
         isDeductionInput.checked = false;
@@ -1232,10 +1329,17 @@ async function submitFinalize() {
                     emailFormData.append('start_date', targetDate);
                     emailFormData.append('end_date', targetDate);
 
-                    await fetch('/reports/daily-balance/email', {
+                    const emailResponse = await fetch('/reports/daily-balance/email', {
                         method: 'POST',
                         body: emailFormData
                     });
+
+                    const emailResult = await emailResponse.json();
+                    if (emailResult.success) {
+                        alert(emailResult.message);
+                    } else {
+                        alert('Warning: ' + emailResult.message);
+                    }
                 }
             }
 
@@ -1253,9 +1357,13 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('=== Page loaded, initializing ===');
     updateAddEmployeeDropdown();
 
+    // Add input listeners and select-on-focus for financial fields
     document.querySelectorAll('.table1-field, .table2-field').forEach(field => {
         field.addEventListener('input', calculateFinancialTotals);
     });
+
+    // Add select-on-focus to all number inputs (financial and employee)
+    addSelectOnFocusBehavior(document.querySelectorAll('.table1-field, .table2-field, .tip-input'));
 
     document.querySelectorAll('.employee-entry').forEach(entry => {
         attachEmployeeInputListeners(entry);

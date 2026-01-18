@@ -60,6 +60,7 @@ def get_next_run_times(schedule_type, cron_expression=None, interval_value=None,
             if len(parts) != 5:
                 return []
 
+            # Create trigger in user's timezone (respects TZ environment variable)
             trigger = CronTrigger(
                 minute=parts[0],
                 hour=parts[1],
@@ -69,12 +70,16 @@ def get_next_run_times(schedule_type, cron_expression=None, interval_value=None,
                 timezone=tz
             )
 
-            current = now
+            # Calculate next runs by advancing the reference time properly
+            reference_time = now
+
             for _ in range(count):
-                next_run = trigger.get_next_fire_time(None, current)
+                next_run = trigger.get_next_fire_time(None, reference_time)
                 if next_run:
                     next_runs.append(next_run)
-                    current = next_run + timedelta(seconds=1)
+                    # Advance reference time to just after the found run
+                    # Use 1 minute increment and normalize to handle DST transitions
+                    reference_time = tz.normalize(next_run + timedelta(minutes=1))
                 else:
                     break
 

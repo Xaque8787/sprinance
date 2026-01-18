@@ -126,7 +126,7 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
             for payroll_entry in report_data['payroll_summary']:
                 html += '<table class="summary-table"><tbody>'
                 for field in payroll_entry.get('fields', []):
-                    html += f'<tr><td><strong>{field.get("name", "")}</strong></td><td class="text-right">{field.get("value", "")}</td></tr>'
+                    html += f'<tr><td><strong>{field.get("name", "")}</strong></td><td>{field.get("value", "")}</td></tr>'
                 html += '</tbody></table>'
         else:
             if report_data['payroll_summary']:
@@ -142,60 +142,53 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
                     html += f'<td>{entry.get("employee_name", "")}</td>'
                     html += f'<td>{entry.get("position", "")}</td>'
                     for field in entry.get('fields', []):
-                        html += f'<td class="text-right">{field.get("value", "")}</td>'
+                        html += f'<td>{field.get("value", "")}</td>'
                     html += '</tr>'
 
                 html += '</tbody></table>'
 
     if report_data.get('summary'):
-        html += '<h2>Summary</h2>'
-        html += '<table class="summary-table"><thead><tr>'
-        html += '<th>Employee Name</th><th>Position</th><th>Bank Card Tips</th>'
-        html += '<th>Cash Tips</th><th>Adjustments</th><th>Tips on Paycheck</th>'
-        html += '<th>Tip Out</th><th>Take Home</th><th>Shifts</th>'
-        html += '</tr></thead><tbody>'
-
-        for entry in report_data['summary']:
-            html += '<tr>'
-            html += f'<td>{entry.get("employee_name", "")}</td>'
-            html += f'<td>{entry.get("position", "")}</td>'
-            html += f'<td class="text-right">{entry.get("bank_card_tips", "")}</td>'
-            html += f'<td class="text-right">{entry.get("cash_tips", "")}</td>'
-            html += f'<td class="text-right">{entry.get("adjustments", "")}</td>'
-            html += f'<td class="text-right">{entry.get("tips_on_paycheck", "")}</td>'
-            html += f'<td class="text-right">{entry.get("tip_out", "")}</td>'
-            html += f'<td class="text-right highlight"><strong>{entry.get("take_home", "")}</strong></td>'
-            html += f'<td class="text-right">{entry.get("num_shifts", "")}</td>'
-            html += '</tr>'
-
-        html += '</tbody></table>'
-
-    if report_data.get('details'):
-        html += '<h2>Daily Breakdown</h2>'
-
-        for detail in report_data['details']:
-            html += f'<h3>Employee: {detail.get("employee", "")}</h3>'
+        html += '<h2>Employee Summary</h2>'
+        if report_data['summary']:
+            first_entry = report_data['summary'][0]
             html += '<table><thead><tr>'
-            html += '<th>Date</th><th>Day</th><th>Bank Card Sales</th><th>Bank Card Tips</th>'
-            html += '<th>Total Sales</th><th>Cash Tips</th><th>Adjustments</th>'
-            html += '<th>Tips on Paycheck</th><th>Tip Out</th><th>Take Home</th>'
+            html += '<th>Employee Name</th><th>Position</th>'
+            for field in first_entry.get('fields', []):
+                html += f'<th>{field.get("name", "")}</th>'
             html += '</tr></thead><tbody>'
 
-            for entry in detail.get('entries', []):
+            for entry in report_data['summary']:
                 html += '<tr>'
-                html += f'<td>{entry.get("date", "")}</td>'
-                html += f'<td>{entry.get("day", "")}</td>'
-                html += f'<td class="text-right">{entry.get("bank_card_sales", "")}</td>'
-                html += f'<td class="text-right">{entry.get("bank_card_tips", "")}</td>'
-                html += f'<td class="text-right">{entry.get("total_sales", "")}</td>'
-                html += f'<td class="text-right">{entry.get("cash_tips", "")}</td>'
-                html += f'<td class="text-right">{entry.get("adjustments", "")}</td>'
-                html += f'<td class="text-right">{entry.get("tips_on_paycheck", "")}</td>'
-                html += f'<td class="text-right">{entry.get("tip_out", "")}</td>'
-                html += f'<td class="text-right highlight"><strong>{entry.get("take_home", "")}</strong></td>'
+                html += f'<td>{entry.get("employee_name", "")}</td>'
+                html += f'<td>{entry.get("position", "")}</td>'
+                for field in entry.get('fields', []):
+                    html += f'<td>{field.get("value", "")}</td>'
                 html += '</tr>'
 
             html += '</tbody></table>'
+
+    if report_data.get('details'):
+        html += '<h2>Detailed Breakdown</h2>'
+        for detail_entry in report_data['details']:
+            html += f'<h3>Employee: {detail_entry.get("employee", "")}</h3>'
+
+            if detail_entry.get('entries'):
+                first_detail = detail_entry['entries'][0]
+                html += '<table><thead><tr>'
+                html += '<th>Date</th><th>Day</th>'
+                for field in first_detail.get('fields', []):
+                    html += f'<th>{field.get("name", "")}</th>'
+                html += '</tr></thead><tbody>'
+
+                for entry in detail_entry['entries']:
+                    html += '<tr>'
+                    html += f'<td>{entry.get("date", "")}</td>'
+                    html += f'<td>{entry.get("day", "")}</td>'
+                    for field in entry.get('fields', []):
+                        html += f'<td>{field.get("value", "")}</td>'
+                    html += '</tr>'
+
+                html += '</tbody></table>'
 
     html += '''
             <div class="footer">
@@ -393,23 +386,23 @@ def generate_daily_balance_html(report_data: Dict[str, Any]) -> str:
         if daily_report.get('employees'):
             html += '<h3>Employee Breakdown</h3>'
             html += '<table><thead><tr>'
-            html += '<th>Employee</th><th>Position</th><th>Bank Card Sales</th><th>Bank Card Tips</th>'
-            html += '<th>Cash Tips</th><th>Total Sales</th><th>Adjustments</th>'
-            html += '<th>Tips on Paycheck</th><th>Tip Out</th><th>Take Home</th>'
+            html += '<th>Employee</th><th>Position</th>'
+
+            if daily_report['employees'] and len(daily_report['employees']) > 0:
+                first_emp = daily_report['employees'][0]
+                for field in first_emp.get('fields', []):
+                    html += f'<th>{field.get("name", "")}</th>'
+
             html += '</tr></thead><tbody>'
 
             for emp in daily_report['employees']:
                 html += '<tr>'
                 html += f'<td>{emp.get("name", "")}</td>'
                 html += f'<td>{emp.get("position", "")}</td>'
-                html += f'<td class="text-right">{emp.get("bank_card_sales", "")}</td>'
-                html += f'<td class="text-right">{emp.get("bank_card_tips", "")}</td>'
-                html += f'<td class="text-right">{emp.get("cash_tips", "")}</td>'
-                html += f'<td class="text-right">{emp.get("total_sales", "")}</td>'
-                html += f'<td class="text-right">{emp.get("adjustments", "")}</td>'
-                html += f'<td class="text-right">{emp.get("tips_on_paycheck", "")}</td>'
-                html += f'<td class="text-right">{emp.get("tip_out", "")}</td>'
-                html += f'<td class="text-right">{emp.get("take_home", "")}</td>'
+
+                for field in emp.get('fields', []):
+                    html += f'<td class="text-right">{field.get("value", "")}</td>'
+
                 html += '</tr>'
 
             html += '</tbody></table>'

@@ -82,18 +82,36 @@
     <div class="report-section">
         <h2>Employee Summary</h2>
         <div class="table-wrapper">
+            {% if report_data.is_employee_specific %}
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in report_data.summary %}
+                        {% for field in employee.fields %}
+                        <tr>
+                            <td class="employee-name">{{ field.name }}</td>
+                            <td class="amount">{{ field.value }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
             <table class="summary-table">
                 <thead>
                     <tr>
                         <th>Employee Name</th>
                         <th>Position</th>
-                        <th>Bank Card Tips</th>
-                        <th>Cash Tips</th>
-                        <th>Adjustments</th>
-                        <th>Tips on Paycheck</th>
-                        <th>Tip Out</th>
-                        <th>Take Home</th>
-                        <th>Shifts</th>
+                        {% if report_data.summary[0].fields %}
+                            {% for field in report_data.summary[0].fields %}
+                            <th>{{ field.name }}</th>
+                            {% endfor %}
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -101,17 +119,14 @@
                     <tr>
                         <td class="employee-name">{{ employee.employee_name }}</td>
                         <td>{{ employee.position }}</td>
-                        <td class="amount">{{ employee.bank_card_tips }}</td>
-                        <td class="amount">{{ employee.cash_tips }}</td>
-                        <td class="amount">{{ employee.adjustments }}</td>
-                        <td class="amount">{{ employee.tips_on_paycheck }}</td>
-                        <td class="amount">{{ employee.tip_out }}</td>
-                        <td class="amount highlight">{{ employee.take_home }}</td>
-                        <td class="center">{{ employee.num_shifts }}</td>
+                        {% for field in employee.fields %}
+                        <td class="amount">{{ field.value }}</td>
+                        {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% endif %}
         </div>
     </div>
     {% else %}
@@ -132,14 +147,11 @@
                         <tr>
                             <th>Date</th>
                             <th>Day</th>
-                            <th>Bank Card Sales</th>
-                            <th>Bank Card Tips</th>
-                            <th>Total Sales</th>
-                            <th>Cash Tips</th>
-                            <th>Adjustments</th>
-                            <th>Tips on Paycheck</th>
-                            <th>Tip Out</th>
-                            <th>Take Home</th>
+                            {% if employee_detail.entries and employee_detail.entries|length > 0 %}
+                                {% for field in employee_detail.entries[0].fields %}
+                                <th>{{ field.name }}</th>
+                                {% endfor %}
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -147,14 +159,9 @@
                         <tr>
                             <td>{{ entry.date }}</td>
                             <td>{{ entry.day }}</td>
-                            <td class="amount">{{ entry.bank_card_sales }}</td>
-                            <td class="amount">{{ entry.bank_card_tips }}</td>
-                            <td class="amount">{{ entry.total_sales }}</td>
-                            <td class="amount">{{ entry.cash_tips }}</td>
-                            <td class="amount">{{ entry.adjustments }}</td>
-                            <td class="amount">{{ entry.tips_on_paycheck }}</td>
-                            <td class="amount">{{ entry.tip_out }}</td>
-                            <td class="amount highlight">{{ entry.take_home }}</td>
+                            {% for field in entry.fields %}
+                            <td class="amount">{{ field.value }}</td>
+                            {% endfor %}
                         </tr>
                         {% endfor %}
                     </tbody>

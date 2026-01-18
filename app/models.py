@@ -109,19 +109,15 @@ class DailyEmployeeEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
     daily_balance_id = Column(Integer, ForeignKey("daily_balance.id"), nullable=False)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
-
-    bank_card_sales = Column(Float, default=0.0)
-    bank_card_tips = Column(Float, default=0.0)
-    cash_tips = Column(Float, default=0.0)
-    total_sales = Column(Float, default=0.0)
-    adjustments = Column(Float, default=0.0)
-    tips_on_paycheck = Column(Float, default=0.0)
-    tip_out = Column(Float, default=0.0)
-    calculated_take_home = Column(Float, default=0.0)
     tip_values = Column(JSON, default=dict)
 
     daily_balance = relationship("DailyBalance", back_populates="employee_entries")
     employee = relationship("Employee", back_populates="daily_entries")
+
+    def get_tip_value(self, field_name: str, default=0.0):
+        if self.tip_values and isinstance(self.tip_values, dict):
+            return self.tip_values.get(field_name, default)
+        return default
 
 class FinancialLineItemTemplate(Base):
     __tablename__ = "financial_line_item_templates"
