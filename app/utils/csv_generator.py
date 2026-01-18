@@ -74,33 +74,28 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
         writer.writerow([])
 
+        all_requirements = []
+        requirement_map = {}
+        for entry in employee_entries:
+            for req in entry.employee.position.tip_requirements:
+                if req.field_name not in requirement_map:
+                    requirement_map[req.field_name] = req.name
+                    all_requirements.append(req)
+
+        all_requirements.sort(key=lambda r: r.display_order)
+
         writer.writerow(["Employee Breakdown"])
-        writer.writerow([
-            "Employee Name",
-            "Position",
-            "Bank Card Sales",
-            "Bank Card Tips",
-            "Cash Tips",
-            "Total Sales",
-            "Adjustments",
-            "Tips on Paycheck",
-            "Tip Out",
-            "Take-Home Tips"
-        ])
+        header_row = ["Employee Name", "Position"]
+        for req in all_requirements:
+            header_row.append(req.name)
+        writer.writerow(header_row)
 
         for entry in employee_entries:
-            writer.writerow([
-                entry.employee.display_name,
-                entry.employee.position.name,
-                f"${entry.bank_card_sales:.2f}",
-                f"${entry.bank_card_tips:.2f}",
-                f"${entry.cash_tips:.2f}",
-                f"${entry.total_sales:.2f}",
-                f"${entry.adjustments:.2f}",
-                f"${entry.tips_on_paycheck:.2f}",
-                f"${entry.tip_out:.2f}",
-                f"${entry.calculated_take_home:.2f}"
-            ])
+            row = [entry.employee.display_name, entry.employee.position.name]
+            for req in all_requirements:
+                value = entry.get_tip_value(req.field_name, 0.0)
+                row.append(f"${value:.2f}")
+            writer.writerow(row)
 
     return filepath
 
@@ -254,34 +249,30 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
             writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
             writer.writerow([])
 
-            writer.writerow(["Employee Breakdown"])
-            writer.writerow([
-                "Employee Name",
-                "Position",
-                "Bank Card Sales",
-                "Bank Card Tips",
-                "Cash Tips",
-                "Total Sales",
-                "Adjustments",
-                "Tips on Paycheck",
-                "Tip Out",
-                "Take-Home Tips"
-            ])
-
             sorted_entries = sorted(daily_balance.employee_entries, key=lambda e: (e.employee.last_name or '', e.employee.first_name or ''))
+
+            all_requirements = []
+            requirement_map = {}
             for entry in sorted_entries:
-                writer.writerow([
-                    entry.employee.display_name,
-                    entry.employee.position.name,
-                    f"${entry.bank_card_sales:.2f}",
-                    f"${entry.bank_card_tips:.2f}",
-                    f"${entry.cash_tips:.2f}",
-                    f"${entry.total_sales:.2f}",
-                    f"${entry.adjustments:.2f}",
-                    f"${entry.tips_on_paycheck:.2f}",
-                    f"${entry.tip_out:.2f}",
-                    f"${entry.calculated_take_home:.2f}"
-                ])
+                for req in entry.employee.position.tip_requirements:
+                    if req.field_name not in requirement_map:
+                        requirement_map[req.field_name] = req.name
+                        all_requirements.append(req)
+
+            all_requirements.sort(key=lambda r: r.display_order)
+
+            writer.writerow(["Employee Breakdown"])
+            header_row = ["Employee Name", "Position"]
+            for req in all_requirements:
+                header_row.append(req.name)
+            writer.writerow(header_row)
+
+            for entry in sorted_entries:
+                row = [entry.employee.display_name, entry.employee.position.name]
+                for req in all_requirements:
+                    value = entry.get_tip_value(req.field_name, 0.0)
+                    row.append(f"${value:.2f}")
+                writer.writerow(row)
 
             writer.writerow([])
             writer.writerow(["=" * 80])
