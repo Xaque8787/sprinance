@@ -388,7 +388,6 @@ def generate_daily_balance_html(report_data: Dict[str, Any]) -> str:
             for item in daily_report['expense_items']:
                 html += f'<tr><td>{item["name"]}</td><td class="text-right">{item["value"]}</td></tr>'
             html += f'<tr class="total-row"><td>Total Expenses</td><td class="text-right">{daily_report.get("expense_total", "")}</td></tr>'
-            html += f'<tr class="total-row"><td>Cash Over/Under</td><td class="text-right">{daily_report.get("cash_over_under", "")}</td></tr>'
             html += '</tbody></table>'
 
         if daily_report.get('employees'):
