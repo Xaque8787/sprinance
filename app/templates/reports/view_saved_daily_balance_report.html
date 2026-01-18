@@ -118,7 +118,7 @@
                             <td>{{ employee.name }}</td>
                             <td>{{ employee.position }}</td>
                             {% for field in employee.fields %}
-                            <td class="amount">{{ field.value }}</td>
+                            <td class="amount-left">{{ field.value }}</td>
                             {% endfor %}
                         </tr>
                         {% endfor %}
@@ -319,6 +319,11 @@
 
 .employee-table .amount {
     text-align: right;
+    font-family: 'Courier New', monospace;
+}
+
+.employee-table .amount-left {
+    text-align: left;
     font-family: 'Courier New', monospace;
 }
 

@@ -147,6 +147,49 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
 
                 html += '</tbody></table>'
 
+    if report_data.get('summary'):
+        html += '<h2>Employee Summary</h2>'
+        if report_data['summary']:
+            first_entry = report_data['summary'][0]
+            html += '<table><thead><tr>'
+            html += '<th>Employee Name</th><th>Position</th>'
+            for field in first_entry.get('fields', []):
+                html += f'<th>{field.get("name", "")}</th>'
+            html += '</tr></thead><tbody>'
+
+            for entry in report_data['summary']:
+                html += '<tr>'
+                html += f'<td>{entry.get("employee_name", "")}</td>'
+                html += f'<td>{entry.get("position", "")}</td>'
+                for field in entry.get('fields', []):
+                    html += f'<td class="text-right">{field.get("value", "")}</td>'
+                html += '</tr>'
+
+            html += '</tbody></table>'
+
+    if report_data.get('details'):
+        html += '<h2>Detailed Breakdown</h2>'
+        for detail_entry in report_data['details']:
+            html += f'<h3>Employee: {detail_entry.get("employee", "")}</h3>'
+
+            if detail_entry.get('entries'):
+                first_detail = detail_entry['entries'][0]
+                html += '<table><thead><tr>'
+                html += '<th>Date</th><th>Day</th>'
+                for field in first_detail.get('fields', []):
+                    html += f'<th>{field.get("name", "")}</th>'
+                html += '</tr></thead><tbody>'
+
+                for entry in detail_entry['entries']:
+                    html += '<tr>'
+                    html += f'<td>{entry.get("date", "")}</td>'
+                    html += f'<td>{entry.get("day", "")}</td>'
+                    for field in entry.get('fields', []):
+                        html += f'<td class="text-right">{field.get("value", "")}</td>'
+                    html += '</tr>'
+
+                html += '</tbody></table>'
+
     html += '''
             <div class="footer">
                 <p style="margin: 0;">This is an automated email from your Management System.</p>
