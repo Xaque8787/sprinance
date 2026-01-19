@@ -1,8 +1,10 @@
 import os
 import json
+import time
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 import pytz
 from app.database import SessionLocal, DATABASE_DIR
 from app.models import User
@@ -11,6 +13,64 @@ from app.utils.email import send_report_emails
 from app.scheduler import cleanup_old_executions
 from app.utils.backup import create_backup
 from app.models import Employee
+
+def commit_with_retry(db, max_retries=3, base_delay=0.1):
+    """
+    Attempt to commit database changes with retry logic for SQLite locking issues.
+
+    Args:
+        db: Database session
+        max_retries: Maximum number of retry attempts
+        base_delay: Base delay in seconds (will increase exponentially)
+
+    Returns:
+        bool: True if commit succeeded, False otherwise
+    """
+    for attempt in range(max_retries):
+        try:
+            db.commit()
+            return True
+        except OperationalError as e:
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                print(f"⚠ Database locked, retrying in {delay}s (attempt {attempt + 1}/{max_retries}): {e}")
+                time.sleep(delay)
+                db.rollback()
+            else:
+                print(f"✗ Database commit failed after {max_retries} attempts: {e}")
+                db.rollback()
+                return False
+        except Exception as e:
+            print(f"✗ Unexpected error during commit: {e}")
+            db.rollback()
+            return False
+    return False
+
+def verify_execution_status(db, execution_id, expected_status):
+    """
+    Verify that a task execution has the expected status in the database.
+
+    Args:
+        db: Database session
+        execution_id: The execution ID to check
+        expected_status: The expected status ('success', 'failed', 'running')
+
+    Returns:
+        bool: True if status matches, False otherwise
+    """
+    try:
+        result = db.execute(text("""
+            SELECT status FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).fetchone()
+
+        if result and result[0] == expected_status:
+            return True
+        else:
+            print(f"⚠ Status mismatch: expected '{expected_status}', got '{result[0] if result else 'None'}'")
+            return False
+    except Exception as e:
+        print(f"✗ Error verifying execution status: {e}")
+        return False
 
 def calculate_date_range(date_range_type):
     """
@@ -81,7 +141,9 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
             INSERT INTO task_executions (task_id, status)
             VALUES (:task_id, 'running')
         """), {"task_id": task_id})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
 
@@ -124,6 +186,8 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
             "emails_sent": len(email_list)
         })
 
+        time.sleep(0.05)
+
         db.execute(text("""
             UPDATE task_executions
             SET completed_at = CURRENT_TIMESTAMP,
@@ -131,7 +195,14 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
                 result_data = :result_data
             WHERE id = :execution_id
         """), {"execution_id": execution_id, "result_data": result_data})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to update task execution status to success")
+
+        if not verify_execution_status(db, execution_id, 'success'):
+            raise Exception("Task execution status verification failed")
+
+        time.sleep(0.05)
 
         task_info = db.execute(text("""
             SELECT schedule_type, cron_expression, interval_value, interval_unit, starts_at
@@ -159,7 +230,9 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
                 next_run_at = :next_run_at
             WHERE id = :task_id
         """), {"task_id": task_id, "next_run_at": next_run_at})
-        db.commit()
+
+        if not commit_with_retry(db):
+            print(f"⚠ Warning: Failed to update scheduled task metadata for '{task_name}'")
 
         cleanup_old_executions(task_id)
 
@@ -170,6 +243,7 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         print(f"✗ Tip report task '{task_name}' failed: {error_message}")
 
         if execution_id:
+            time.sleep(0.05)
             db.execute(text("""
                 UPDATE task_executions
                 SET completed_at = CURRENT_TIMESTAMP,
@@ -177,7 +251,7 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
                     error_message = :error_message
                 WHERE id = :execution_id
             """), {"execution_id": execution_id, "error_message": error_message})
-            db.commit()
+            commit_with_retry(db)
 
     finally:
         db.close()
@@ -203,7 +277,9 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
             INSERT INTO task_executions (task_id, status)
             VALUES (:task_id, 'running')
         """), {"task_id": task_id})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
 
@@ -249,6 +325,8 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
             "emails_sent": len(email_list)
         })
 
+        time.sleep(0.05)
+
         db.execute(text("""
             UPDATE task_executions
             SET completed_at = CURRENT_TIMESTAMP,
@@ -256,7 +334,14 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
                 result_data = :result_data
             WHERE id = :execution_id
         """), {"execution_id": execution_id, "result_data": result_data})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to update task execution status to success")
+
+        if not verify_execution_status(db, execution_id, 'success'):
+            raise Exception("Task execution status verification failed")
+
+        time.sleep(0.05)
 
         task_info = db.execute(text("""
             SELECT schedule_type, cron_expression, interval_value, interval_unit, starts_at
@@ -284,7 +369,9 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
                 next_run_at = :next_run_at
             WHERE id = :task_id
         """), {"task_id": task_id, "next_run_at": next_run_at})
-        db.commit()
+
+        if not commit_with_retry(db):
+            print(f"⚠ Warning: Failed to update scheduled task metadata for '{task_name}'")
 
         cleanup_old_executions(task_id)
 
@@ -295,6 +382,7 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
         print(f"✗ Daily balance report task '{task_name}' failed: {error_message}")
 
         if execution_id:
+            time.sleep(0.05)
             db.execute(text("""
                 UPDATE task_executions
                 SET completed_at = CURRENT_TIMESTAMP,
@@ -302,7 +390,7 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
                     error_message = :error_message
                 WHERE id = :execution_id
             """), {"execution_id": execution_id, "error_message": error_message})
-            db.commit()
+            commit_with_retry(db)
 
     finally:
         db.close()
@@ -329,7 +417,9 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
             INSERT INTO task_executions (task_id, status)
             VALUES (:task_id, 'running')
         """), {"task_id": task_id})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
 
@@ -377,6 +467,8 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
             "emails_sent": len(email_list)
         })
 
+        time.sleep(0.05)
+
         db.execute(text("""
             UPDATE task_executions
             SET completed_at = CURRENT_TIMESTAMP,
@@ -384,7 +476,14 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
                 result_data = :result_data
             WHERE id = :execution_id
         """), {"execution_id": execution_id, "result_data": result_data})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to update task execution status to success")
+
+        if not verify_execution_status(db, execution_id, 'success'):
+            raise Exception("Task execution status verification failed")
+
+        time.sleep(0.05)
 
         task_info = db.execute(text("""
             SELECT schedule_type, cron_expression, interval_value, interval_unit, starts_at
@@ -412,7 +511,9 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
                 next_run_at = :next_run_at
             WHERE id = :task_id
         """), {"task_id": task_id, "next_run_at": next_run_at})
-        db.commit()
+
+        if not commit_with_retry(db):
+            print(f"⚠ Warning: Failed to update scheduled task metadata for '{task_name}'")
 
         cleanup_old_executions(task_id)
 
@@ -423,6 +524,7 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
         print(f"✗ Employee tip report task '{task_name}' failed: {error_message}")
 
         if execution_id:
+            time.sleep(0.05)
             db.execute(text("""
                 UPDATE task_executions
                 SET completed_at = CURRENT_TIMESTAMP,
@@ -430,7 +532,7 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
                     error_message = :error_message
                 WHERE id = :execution_id
             """), {"execution_id": execution_id, "error_message": error_message})
-            db.commit()
+            commit_with_retry(db)
 
     finally:
         db.close()
@@ -451,7 +553,9 @@ def run_backup_task(task_id, task_name):
             INSERT INTO task_executions (task_id, status)
             VALUES (:task_id, 'running')
         """), {"task_id": task_id})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
 
@@ -462,6 +566,8 @@ def run_backup_task(task_id, task_name):
             "backup_created": True
         })
 
+        time.sleep(0.05)
+
         db.execute(text("""
             UPDATE task_executions
             SET completed_at = CURRENT_TIMESTAMP,
@@ -469,7 +575,14 @@ def run_backup_task(task_id, task_name):
                 result_data = :result_data
             WHERE id = :execution_id
         """), {"execution_id": execution_id, "result_data": result_data})
-        db.commit()
+
+        if not commit_with_retry(db):
+            raise Exception("Failed to update task execution status to success")
+
+        if not verify_execution_status(db, execution_id, 'success'):
+            raise Exception("Task execution status verification failed")
+
+        time.sleep(0.05)
 
         task_info = db.execute(text("""
             SELECT schedule_type, cron_expression, interval_value, interval_unit, starts_at
@@ -497,7 +610,9 @@ def run_backup_task(task_id, task_name):
                 next_run_at = :next_run_at
             WHERE id = :task_id
         """), {"task_id": task_id, "next_run_at": next_run_at})
-        db.commit()
+
+        if not commit_with_retry(db):
+            print(f"⚠ Warning: Failed to update scheduled task metadata for '{task_name}'")
 
         cleanup_old_executions(task_id)
 
@@ -508,6 +623,7 @@ def run_backup_task(task_id, task_name):
         print(f"✗ Backup task '{task_name}' failed: {error_message}")
 
         if execution_id:
+            time.sleep(0.05)
             db.execute(text("""
                 UPDATE task_executions
                 SET completed_at = CURRENT_TIMESTAMP,
@@ -515,7 +631,7 @@ def run_backup_task(task_id, task_name):
                     error_message = :error_message
                 WHERE id = :execution_id
             """), {"execution_id": execution_id, "error_message": error_message})
-            db.commit()
+            commit_with_retry(db)
 
     finally:
         db.close()
