@@ -1,4 +1,5 @@
 import os
+import time
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 import resend
@@ -478,7 +479,7 @@ def send_report_emails(
     successful_sends = []
     failed_sends = []
 
-    for email in to_emails:
+    for index, email in enumerate(to_emails):
         params = {
             "from": from_email,
             "to": [email],
@@ -491,6 +492,9 @@ def send_report_emails(
             successful_sends.append(email)
         except Exception as e:
             failed_sends.append({"email": email, "error": str(e)})
+
+        if index < len(to_emails) - 1:
+            time.sleep(0.5)
 
     if len(successful_sends) > 0 and len(failed_sends) == 0:
         return {
