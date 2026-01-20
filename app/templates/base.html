@@ -4,14 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Daily Dough{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
-            <h1 class="logo">Daily Dough</h1>
+            <div class="navbar-header">
+                <div class="logo">
+                    <img src="/static/images/icon-64.png" alt="Daily Dough Logo" class="navbar-logo">
+                    <h1>Daily Dough</h1>
+                </div>
+                {% if current_user %}
+                <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                {% endif %}
+            </div>
             {% if current_user %}
-            <ul class="nav-links">
+            <ul class="nav-links" id="navLinks">
                 <li><a href="/">Home</a></li>
                 <li><a href="/daily-balance">Daily Balance</a></li>
                 <li><a href="/reports">Reports</a></li>

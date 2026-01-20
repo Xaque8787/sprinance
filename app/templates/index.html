@@ -5,9 +5,14 @@
 {% block content %}
 <div class="home-page">
     <div class="hero">
-        <h1>Daily Dough</h1>
-        <p class="subtitle">Daily Balance and Tip Records</p>
         <p class="current-date">{{ current_date }} - {{ day_of_week }}</p>
+    </div>
+
+    <div class="version-info">
+        <span class="version">v{{ version }}</span>
+        {% if update_available %}
+        <span class="update-badge">Update Available</span>
+        {% endif %}
     </div>
 
     <div class="dashboard-cards">

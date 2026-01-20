@@ -9,6 +9,7 @@ from app.models import User, Position, TipEntryRequirement
 from app.auth.jwt_handler import get_current_user_from_cookie
 from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items, scheduled_tasks
 from app.utils.slugify import create_slug
+from app.utils.version import check_version
 from app.scheduler import start_scheduler, shutdown_scheduler
 
 app = FastAPI(title="Internal Management System")
@@ -55,13 +56,17 @@ async def home(request: Request, db: Session = Depends(get_db)):
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     day_of_week = days_of_week[today.weekday()]
 
+    version, update_available = check_version()
+
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "current_user": user,
             "current_date": today,
-            "day_of_week": day_of_week
+            "day_of_week": day_of_week,
+            "version": version,
+            "update_available": update_available
         }
     )
 
