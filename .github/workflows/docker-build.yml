@@ -73,7 +73,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.OWNER_LC }}/sprinance
+          images: ${{ env.REGISTRY }}/${{ steps.lowercase.outputs.OWNER_LC }}/dailydough
           tags: |
             type=raw,value=latest
             type=raw,value=${{ needs.check-version.outputs.version }}

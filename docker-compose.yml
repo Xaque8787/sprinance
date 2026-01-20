@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/xaque8787/sprinance:latest
+    image: ghcr.io/xaque8787/dailydough:latest
     container_name: management-system
     ports:
       - "5710:5710"
