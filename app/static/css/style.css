@@ -64,6 +64,13 @@ body {
     flex-direction: column;
     gap: 5px;
     z-index: 1000;
+    position: relative;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .hamburger-line {
@@ -832,14 +839,21 @@ textarea[readonly] {
     .navbar .container {
         flex-direction: column;
         align-items: stretch;
+        position: relative;
     }
 
     .navbar-header {
         width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 100;
     }
 
     .navbar-toggle {
         display: flex;
+        flex-shrink: 0;
     }
 
     .nav-links {
@@ -850,6 +864,8 @@ textarea[readonly] {
         overflow: hidden;
         transition: max-height 0.3s ease;
         margin: 0;
+        position: relative;
+        z-index: 50;
     }
 
     .nav-links.active {

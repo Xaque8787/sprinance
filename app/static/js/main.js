@@ -1,21 +1,13 @@
-console.log('Management System loaded');
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM Content Loaded');
     const navbarToggle = document.getElementById('navbarToggle');
     const navLinks = document.getElementById('navLinks');
 
-    console.log('navbarToggle:', navbarToggle);
-    console.log('navLinks:', navLinks);
-
     if (navbarToggle && navLinks) {
-        console.log('Adding click listener to hamburger menu');
         navbarToggle.addEventListener('click', function(e) {
-            console.log('Hamburger clicked!');
             e.preventDefault();
+            e.stopPropagation();
             navbarToggle.classList.toggle('active');
             navLinks.classList.toggle('active');
-            console.log('Toggle classes updated');
         });
 
         navLinks.querySelectorAll('a').forEach(link => {
@@ -26,7 +18,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
-    } else {
-        console.error('Could not find navbar elements');
+
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768 &&
+                !navbarToggle.contains(e.target) &&
+                !navLinks.contains(e.target) &&
+                navLinks.classList.contains('active')) {
+                navbarToggle.classList.remove('active');
+                navLinks.classList.remove('active');
+            }
+        });
     }
 });
