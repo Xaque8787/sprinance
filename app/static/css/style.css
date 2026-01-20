@@ -57,20 +57,21 @@ body {
 
 .navbar-toggle {
     display: none;
-    background: none;
-    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    border: 2px solid #333;
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.75rem;
     flex-direction: column;
     gap: 5px;
     z-index: 1000;
     position: relative;
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 50px;
+    min-height: 50px;
     justify-content: center;
     align-items: center;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
+    border-radius: 4px;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .hamburger-line {
