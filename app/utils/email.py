@@ -494,7 +494,7 @@ def send_report_emails(
             failed_sends.append({"email": email, "error": str(e)})
 
         if index < len(to_emails) - 1:
-            time.sleep(0.5)
+            time.sleep(0.6)
 
     if len(successful_sends) > 0 and len(failed_sends) == 0:
         return {

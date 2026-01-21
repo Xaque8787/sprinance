@@ -64,7 +64,21 @@ def save_daily_balance_data(
 
     for template in financial_templates:
         value_key = f"financial_item_{template.id}"
-        value = float(form_data.get(value_key, 0.0))
+        value_str = form_data.get(value_key)
+
+        if value_str is None or value_str == '' or value_str == 'null':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Financial item '{template.name}' cannot be blank. Enter 0 if the value is zero."
+            )
+
+        try:
+            value = float(value_str)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Financial item '{template.name}' must be a valid number."
+            )
 
         line_item = DailyFinancialLineItem(
             daily_balance_id=daily_balance.id,
@@ -96,7 +110,21 @@ def save_daily_balance_data(
         for req in employee.position.tip_requirements:
             if not req.no_input and not req.is_total:
                 field_key = f"tip_{req.field_name}_{emp_id}"
-                value = float(form_data.get(field_key, 0.0))
+                value_str = form_data.get(field_key)
+
+                if value_str is None or value_str == '' or value_str == 'null':
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Employee '{employee.display_name}' - '{req.name}' cannot be blank. Enter 0 if the value is zero."
+                    )
+
+                try:
+                    value = float(value_str)
+                except (ValueError, TypeError):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Employee '{employee.display_name}' - '{req.name}' must be a valid number."
+                    )
                 tip_values[req.field_name] = value
 
                 if req.apply_to_revenue and value != 0:
@@ -132,7 +160,15 @@ def save_daily_balance_data(
                 for other_req in employee.position.tip_requirements:
                     if not other_req.no_input and not other_req.is_total and not other_req.record_data:
                         field_key = f"tip_{other_req.field_name}_{emp_id}"
-                        value = float(form_data.get(field_key, 0.0))
+                        value_str = form_data.get(field_key)
+
+                        if value_str is None or value_str == '' or value_str == 'null':
+                            value = 0.0
+                        else:
+                            try:
+                                value = float(value_str)
+                            except (ValueError, TypeError):
+                                value = 0.0
                         if other_req.is_deduction:
                             total -= value
                         else:
@@ -292,9 +328,81 @@ async def save_daily_balance_route(
     day_of_week = DAYS_OF_WEEK[date_obj.weekday()]
 
     form_data = await request.form()
-    save_daily_balance_data(db, date_obj, day_of_week, form_data, finalized=False, current_user=current_user, source="user")
 
-    return RedirectResponse(url=f"/daily-balance?selected_date={target_date}", status_code=302)
+    try:
+        save_daily_balance_data(db, date_obj, day_of_week, form_data, finalized=False, current_user=current_user, source="user")
+        return RedirectResponse(url=f"/daily-balance?selected_date={target_date}", status_code=302)
+    except HTTPException as e:
+        all_employees = db.query(Employee).all()
+        all_employees = sorted(all_employees, key=lambda emp: (emp.position.name, emp.display_name))
+
+        scheduled_employees = [emp for emp in all_employees if day_of_week in emp.scheduled_days]
+
+        daily_balance = db.query(DailyBalance).filter(DailyBalance.date == date_obj).first()
+        employee_entries = {}
+        if daily_balance:
+            for entry in daily_balance.employee_entries:
+                employee_entries[entry.employee_id] = entry
+
+        working_employees = []
+        if daily_balance:
+            working_employees = [entry.employee for entry in daily_balance.employee_entries]
+        else:
+            working_employees = scheduled_employees
+
+        working_employees = sorted(working_employees, key=lambda emp: (emp.position.name, emp.display_name))
+
+        for emp in working_employees:
+            attach_display_orders_to_employee(emp, db)
+
+        all_employees_serialized = [serialize_employee(emp, db) for emp in all_employees]
+        working_employee_ids = [emp.id for emp in working_employees]
+
+        templates_list = db.query(FinancialLineItemTemplate).order_by(
+            FinancialLineItemTemplate.category,
+            FinancialLineItemTemplate.display_order
+        ).all()
+
+        financial_line_items = {}
+        if daily_balance:
+            for item in daily_balance.financial_line_items:
+                financial_line_items[f"{item.category}_{item.template_id or item.id}"] = item
+
+        from datetime import timedelta
+        previous_date = date_obj - timedelta(days=1)
+        previous_daily_balance = db.query(DailyBalance).filter(DailyBalance.date == previous_date).first()
+
+        previous_ending_till = 0.0
+        if previous_daily_balance:
+            for item in previous_daily_balance.financial_line_items:
+                if item.template_id:
+                    template = db.query(FinancialLineItemTemplate).filter(
+                        FinancialLineItemTemplate.id == item.template_id
+                    ).first()
+                    if template and template.is_ending_till:
+                        previous_ending_till = item.value
+                        break
+
+        return templates.TemplateResponse(
+            "daily_balance/form.html",
+            {
+                "request": request,
+                "current_user": current_user,
+                "target_date": date_obj,
+                "day_of_week": day_of_week,
+                "daily_balance": daily_balance,
+                "all_employees": all_employees_serialized,
+                "working_employees": working_employees,
+                "working_employee_ids": working_employee_ids,
+                "employee_entries": employee_entries,
+                "scheduled_employees": scheduled_employees,
+                "edit_mode": False,
+                "financial_templates": templates_list,
+                "financial_line_items": financial_line_items,
+                "previous_ending_till": previous_ending_till,
+                "error": e.detail
+            }
+        )
 
 @router.post("/daily-balance/finalize")
 async def finalize_daily_balance_route(
@@ -307,11 +415,82 @@ async def finalize_daily_balance_route(
     day_of_week = DAYS_OF_WEEK[date_obj.weekday()]
 
     form_data = await request.form()
-    daily_balance = save_daily_balance_data(db, date_obj, day_of_week, form_data, finalized=True, current_user=current_user, source="user")
 
-    generate_daily_balance_csv(daily_balance, daily_balance.employee_entries, current_user=current_user, source="user")
+    try:
+        daily_balance = save_daily_balance_data(db, date_obj, day_of_week, form_data, finalized=True, current_user=current_user, source="user")
+        generate_daily_balance_csv(daily_balance, daily_balance.employee_entries, current_user=current_user, source="user")
+        return RedirectResponse(url=f"/daily-balance?selected_date={target_date}", status_code=302)
+    except HTTPException as e:
+        all_employees = db.query(Employee).all()
+        all_employees = sorted(all_employees, key=lambda emp: (emp.position.name, emp.display_name))
 
-    return RedirectResponse(url=f"/daily-balance?selected_date={target_date}", status_code=302)
+        scheduled_employees = [emp for emp in all_employees if day_of_week in emp.scheduled_days]
+
+        daily_balance = db.query(DailyBalance).filter(DailyBalance.date == date_obj).first()
+        employee_entries = {}
+        if daily_balance:
+            for entry in daily_balance.employee_entries:
+                employee_entries[entry.employee_id] = entry
+
+        working_employees = []
+        if daily_balance:
+            working_employees = [entry.employee for entry in daily_balance.employee_entries]
+        else:
+            working_employees = scheduled_employees
+
+        working_employees = sorted(working_employees, key=lambda emp: (emp.position.name, emp.display_name))
+
+        for emp in working_employees:
+            attach_display_orders_to_employee(emp, db)
+
+        all_employees_serialized = [serialize_employee(emp, db) for emp in all_employees]
+        working_employee_ids = [emp.id for emp in working_employees]
+
+        templates_list = db.query(FinancialLineItemTemplate).order_by(
+            FinancialLineItemTemplate.category,
+            FinancialLineItemTemplate.display_order
+        ).all()
+
+        financial_line_items = {}
+        if daily_balance:
+            for item in daily_balance.financial_line_items:
+                financial_line_items[f"{item.category}_{item.template_id or item.id}"] = item
+
+        from datetime import timedelta
+        previous_date = date_obj - timedelta(days=1)
+        previous_daily_balance = db.query(DailyBalance).filter(DailyBalance.date == previous_date).first()
+
+        previous_ending_till = 0.0
+        if previous_daily_balance:
+            for item in previous_daily_balance.financial_line_items:
+                if item.template_id:
+                    template = db.query(FinancialLineItemTemplate).filter(
+                        FinancialLineItemTemplate.id == item.template_id
+                    ).first()
+                    if template and template.is_ending_till:
+                        previous_ending_till = item.value
+                        break
+
+        return templates.TemplateResponse(
+            "daily_balance/form.html",
+            {
+                "request": request,
+                "current_user": current_user,
+                "target_date": date_obj,
+                "day_of_week": day_of_week,
+                "daily_balance": daily_balance,
+                "all_employees": all_employees_serialized,
+                "working_employees": working_employees,
+                "working_employee_ids": working_employee_ids,
+                "employee_entries": employee_entries,
+                "scheduled_employees": scheduled_employees,
+                "edit_mode": False,
+                "financial_templates": templates_list,
+                "financial_line_items": financial_line_items,
+                "previous_ending_till": previous_ending_till,
+                "error": e.detail
+            }
+        )
 
 @router.get("/daily-balance/export")
 async def export_daily_balance(

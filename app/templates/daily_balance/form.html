@@ -70,6 +70,12 @@
 </div>
 {% endif %}
 
+{% if error %}
+<div class="alert alert-error">
+    <strong>❌ Error:</strong> {{ error }}
+</div>
+{% endif %}
+
 <form method="POST" action="{% if daily_balance and daily_balance.finalized %}/daily-balance/save{% else %}/daily-balance/save{% endif %}" id="dailyBalanceForm">
     <input type="hidden" name="target_date" value="{{ target_date }}">
 
@@ -374,8 +380,8 @@
 
     {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
     <div class="form-actions">
-        <button type="submit" class="btn btn-secondary" formaction="/daily-balance/save">Save Draft</button>
-        <button type="button" class="btn btn-primary" onclick="openFinalizeModal()">
+        <button type="submit" class="btn btn-secondary" formaction="/daily-balance/save" onclick="return validateFormBeforeSubmit(event, false)">Save Draft</button>
+        <button type="button" class="btn btn-primary" onclick="validateAndOpenFinalizeModal()">
             Generate Report (Finalize)
         </button>
     </div>
@@ -724,6 +730,9 @@ function attachEmployeeInputListeners(container) {
             const employeeId = this.dataset.employeeId;
             calculateEmployeeTipTotals(employeeId);
             updateEmployeeTipsInFinancialTables();
+            if (this.value !== '') {
+                this.classList.remove('field-error-highlight');
+            }
         });
         // Add select-on-focus behavior
         input.addEventListener('focus', function() {
@@ -931,7 +940,12 @@ async function addFinancialTemplate() {
         table.insertBefore(newRow, totalRow);
 
         const inputField = newRow.querySelector(`.${fieldClass}`);
-        inputField.addEventListener('input', calculateFinancialTotals);
+        inputField.addEventListener('input', function() {
+            calculateFinancialTotals();
+            if (this.value !== '') {
+                this.classList.remove('field-error-highlight');
+            }
+        });
         // Add select-on-focus behavior to the new input
         inputField.addEventListener('focus', function() {
             this.select();
@@ -1264,6 +1278,12 @@ function renderFinalizeUserList() {
     container.innerHTML = html;
 }
 
+function validateAndOpenFinalizeModal() {
+    if (validateFormBeforeSubmit(null, true)) {
+        openFinalizeModal();
+    }
+}
+
 function openFinalizeModal() {
     loadFinalizeAdminUsers();
     const modal = document.getElementById('finalize-modal');
@@ -1294,7 +1314,73 @@ function toggleFinalizeAdditionalEmail() {
     }
 }
 
+function validateFormBeforeSubmit(event, isForFinalize) {
+    const errors = [];
+    const invalidFields = [];
+
+    document.querySelectorAll('.field-error-highlight').forEach(el => {
+        el.classList.remove('field-error-highlight');
+    });
+
+    document.querySelectorAll('.table1-field, .table2-field').forEach(field => {
+        if (!field.classList.contains('calculated-field') && (field.value === '' || field.value === null)) {
+            const row = field.closest('tr');
+            const label = row.querySelector('td:first-child .item-name-display, td:first-child label');
+            let fieldName = 'Unknown field';
+            if (label) {
+                const textContent = label.textContent.trim();
+                fieldName = textContent.split('(')[0].trim();
+            }
+            errors.push(`• ${fieldName}`);
+            field.classList.add('field-error-highlight');
+            invalidFields.push(field);
+        }
+    });
+
+    document.querySelectorAll('.tip-input').forEach(field => {
+        if (field.value === '' || field.value === null) {
+            const formGroup = field.closest('.form-group');
+            const label = formGroup ? formGroup.querySelector('label') : null;
+            let fieldName = 'Unknown field';
+            if (label) {
+                const textContent = label.textContent.trim();
+                fieldName = textContent.replace('*', '').trim();
+            }
+            const employeeEntry = field.closest('.employee-entry');
+            const employeeHeader = employeeEntry ? employeeEntry.querySelector('.employee-entry-header h4') : null;
+            const employeeName = employeeHeader ? employeeHeader.textContent.trim() : 'Unknown employee';
+
+            errors.push(`• ${employeeName} - ${fieldName}`);
+            field.classList.add('field-error-highlight');
+            invalidFields.push(field);
+        }
+    });
+
+    if (errors.length > 0) {
+        let errorMessage = `Found ${errors.length} field(s) that cannot be blank. Enter 0 if the value is zero.\n\nFields requiring attention:\n\n`;
+        errorMessage += errors.join('\n');
+        alert(errorMessage);
+
+        if (invalidFields.length > 0) {
+            invalidFields[0].focus();
+            invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        if (event) {
+            event.preventDefault();
+        }
+        return false;
+    }
+
+    return true;
+}
+
 async function submitFinalize() {
+    if (!validateFormBeforeSubmit(null, true)) {
+        closeFinalizeModal();
+        return;
+    }
+
     const form = document.getElementById('dailyBalanceForm');
     const formData = new FormData(form);
     const targetDate = formData.get('target_date');
@@ -1359,7 +1445,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Add input listeners and select-on-focus for financial fields
     document.querySelectorAll('.table1-field, .table2-field').forEach(field => {
-        field.addEventListener('input', calculateFinancialTotals);
+        field.addEventListener('input', function() {
+            calculateFinancialTotals();
+            if (this.value !== '') {
+                this.classList.remove('field-error-highlight');
+            }
+        });
     });
 
     // Add select-on-focus to all number inputs (financial and employee)
@@ -1511,6 +1602,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .user-checkbox-label input[type="checkbox"] {
     cursor: pointer;
+}
+
+.alert-error {
+    background-color: #fee;
+    border: 1px solid #fcc;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    color: #c00;
+}
+
+.field-error-highlight {
+    border: 2px solid #dc2626 !important;
+    background-color: #fee !important;
 }
 </style>
 {% endblock %}
