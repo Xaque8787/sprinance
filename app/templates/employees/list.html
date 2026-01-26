@@ -13,17 +13,35 @@
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Position</th>
-                <th>Scheduled Days</th>
+                <th>Status</th>
+                <th>Positions & Schedules</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for employee in employees %}
-            <tr>
-                <td><a href="/employees/{{ employee.slug }}">{{ employee.display_name }}</a></td>
-                <td>{{ employee.position.name }}</td>
-                <td>{{ employee.scheduled_days|join(', ') if employee.scheduled_days else 'None' }}</td>
+            <tr {% if not employee.is_active %}style="opacity: 0.6;"{% endif %}>
+                <td>
+                    <a href="/employees/{{ employee.slug }}">{{ employee.display_name }}</a>
+                    {% if not employee.is_active %}<span class="badge" style="background: #dc3545; font-size: 11px; margin-left: 5px;">Inactive</span>{% endif %}
+                </td>
+                <td>{% if employee.is_active %}Active{% else %}Inactive{% endif %}</td>
+                <td>
+                    {% if employee.position_schedules %}
+                        {% for schedule in employee.position_schedules %}
+                            <div style="margin-bottom: 5px;">
+                                <strong>{{ schedule.position.name }}:</strong>
+                                {% if schedule.days_of_week %}
+                                    {{ schedule.days_of_week|join(', ') }}
+                                {% else %}
+                                    <em>No schedule</em>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <em>No positions</em>
+                    {% endif %}
+                </td>
                 <td>
                     <a href="/employees/{{ employee.slug }}/edit" class="btn btn-small">Edit</a>
                     <form method="POST" action="/employees/{{ employee.slug }}/delete" style="display: inline;">

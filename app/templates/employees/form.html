@@ -9,7 +9,7 @@
 </div>
 
 <div class="form-container">
-    <form method="POST" action="{% if employee %}/employees/{{ employee.slug }}/edit{% else %}/employees/new{% endif %}">
+    <form method="POST" action="{% if employee %}/employees/{{ employee.slug }}/edit{% else %}/employees/new{% endif %}" id="employee-form">
         <div class="form-group">
             <label for="first_name">First Name</label>
             <input type="text" id="first_name" name="first_name" value="{% if employee %}{{ employee.first_name }}{% endif %}" required>
@@ -21,32 +21,27 @@
         </div>
 
         <div class="form-group">
-            <label for="position_id">Position</label>
-            <select id="position_id" name="position_id" required>
-                <option value="">Select a position...</option>
-                {% for position in positions %}
-                <option value="{{ position.id }}"
-                        {% if employee and employee.position_id == position.id %}selected{% endif %}>
-                    {{ position.name }}
-                </option>
-                {% endfor %}
-            </select>
-            <small>Tip entry requirements are configured per position. <a href="/positions" target="_blank">Manage positions</a></small>
+            <label class="checkbox-label">
+                <input type="checkbox" id="is_active" name="is_active" value="true" {% if not employee or employee.is_active %}checked{% endif %}>
+                Active (inactive employees won't auto-populate in daily balance)
+            </label>
         </div>
 
         <div class="form-group">
-            <label>Scheduled Days</label>
-            <div class="checkbox-group">
-                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
-                {% for day in days %}
-                <label class="checkbox-label">
-                    <input type="checkbox" name="scheduled_days" value="{{ day }}"
-                           {% if employee and day in employee.scheduled_days %}checked{% endif %}>
-                    {{ day }}
-                </label>
-                {% endfor %}
-            </div>
+            <label>Positions & Schedules</label>
+            <small style="display: block; margin-bottom: 10px;">
+                Assign positions and their scheduled days. Employees without scheduled days can be manually added to any day.
+                <a href="/positions" target="_blank">Manage positions</a>
+            </small>
+
+            <div id="position-schedules-container"></div>
+
+            <button type="button" class="btn btn-secondary" id="add-position-btn" style="margin-top: 10px;">
+                + Add Position & Schedule
+            </button>
         </div>
+
+        <input type="hidden" name="position_schedules" id="position_schedules">
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{% if employee %}Update Employee{% else %}Create Employee{% endif %}</button>
@@ -54,4 +49,159 @@
         </div>
     </form>
 </div>
+
+<script>
+const positions = {{ positions | tojson }};
+{% if employee and employee.position_schedules %}
+const existingSchedules = {{ employee.position_schedules | tojson }};
+{% else %}
+const existingSchedules = [];
+{% endif %}
+
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+let scheduleRows = [];
+
+function initSchedules() {
+    if (existingSchedules.length > 0) {
+        existingSchedules.forEach(schedule => {
+            addPositionRow(schedule.position_id, schedule.days_of_week || []);
+        });
+    } else {
+        addPositionRow();
+    }
+}
+
+function addPositionRow(selectedPositionId = null, selectedDays = []) {
+    const container = document.getElementById('position-schedules-container');
+    const rowIndex = scheduleRows.length;
+
+    const row = document.createElement('div');
+    row.className = 'position-schedule-row';
+    row.style.cssText = 'display: flex; gap: 15px; margin-bottom: 15px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; align-items: start;';
+
+    const positionSelect = document.createElement('select');
+    positionSelect.className = 'position-select';
+    positionSelect.style.cssText = 'flex: 0 0 200px;';
+    positionSelect.required = true;
+
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select position...';
+    positionSelect.appendChild(defaultOption);
+
+    positions.forEach(pos => {
+        const option = document.createElement('option');
+        option.value = pos.id;
+        option.textContent = pos.name;
+        if (pos.id === selectedPositionId) {
+            option.selected = true;
+        }
+        positionSelect.appendChild(option);
+    });
+
+    const daysContainer = document.createElement('div');
+    daysContainer.style.cssText = 'flex: 1; display: flex; gap: 10px; flex-wrap: wrap;';
+
+    days.forEach(day => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        label.style.cssText = 'display: flex; align-items: center; white-space: nowrap;';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'day-checkbox';
+        checkbox.value = day;
+        checkbox.checked = selectedDays.includes(day);
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(day));
+        daysContainer.appendChild(label);
+    });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-danger';
+    removeBtn.textContent = '×';
+    removeBtn.style.cssText = 'flex: 0 0 40px; padding: 5px 10px;';
+    removeBtn.onclick = () => removePositionRow(row);
+
+    row.appendChild(positionSelect);
+    row.appendChild(daysContainer);
+    row.appendChild(removeBtn);
+
+    container.appendChild(row);
+    scheduleRows.push(row);
+
+    updateRemoveButtons();
+}
+
+function removePositionRow(row) {
+    if (scheduleRows.length <= 1) {
+        alert('At least one position must be assigned to the employee.');
+        return;
+    }
+
+    row.remove();
+    scheduleRows = scheduleRows.filter(r => r !== row);
+    updateRemoveButtons();
+}
+
+function updateRemoveButtons() {
+    const buttons = document.querySelectorAll('.position-schedule-row button.btn-danger');
+    buttons.forEach(btn => {
+        btn.disabled = scheduleRows.length <= 1;
+        btn.style.opacity = scheduleRows.length <= 1 ? '0.5' : '1';
+        btn.style.cursor = scheduleRows.length <= 1 ? 'not-allowed' : 'pointer';
+    });
+}
+
+function validateAndSerialize() {
+    const schedulesData = [];
+    const positionIds = new Set();
+
+    for (let row of scheduleRows) {
+        const select = row.querySelector('.position-select');
+        const positionId = parseInt(select.value);
+
+        if (!positionId) {
+            alert('Please select a position for all rows.');
+            return false;
+        }
+
+        if (positionIds.has(positionId)) {
+            alert('Cannot assign the same position multiple times. Please remove duplicate positions.');
+            return false;
+        }
+        positionIds.add(positionId);
+
+        const checkboxes = row.querySelectorAll('.day-checkbox:checked');
+        const selectedDays = Array.from(checkboxes).map(cb => cb.value);
+
+        schedulesData.push({
+            position_id: positionId,
+            days_of_week: selectedDays
+        });
+    }
+
+    if (schedulesData.length === 0) {
+        alert('At least one position must be assigned.');
+        return false;
+    }
+
+    document.getElementById('position_schedules').value = JSON.stringify(schedulesData);
+    return true;
+}
+
+document.getElementById('add-position-btn').addEventListener('click', () => {
+    addPositionRow();
+});
+
+document.getElementById('employee-form').addEventListener('submit', (e) => {
+    if (!validateAndSerialize()) {
+        e.preventDefault();
+    }
+});
+
+initSchedules();
+</script>
 {% endblock %}

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, Request, Form, HTTPException
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+import json
 from app.database import get_db
-from app.models import User, Employee, Position
+from app.models import User, Employee, Position, EmployeePositionSchedule
 from app.auth.jwt_handler import get_current_user
 from app.utils.slugify import create_slug, ensure_unique_slug
 
@@ -40,11 +41,16 @@ async def create_employee(
     request: Request,
     first_name: str = Form(...),
     last_name: str = Form(...),
-    position_id: int = Form(...),
-    scheduled_days: List[str] = Form([]),
+    is_active: bool = Form(True),
+    position_schedules: str = Form(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    schedules_data = json.loads(position_schedules)
+
+    if not schedules_data or len(schedules_data) == 0:
+        raise HTTPException(status_code=400, detail="At least one position must be assigned")
+
     full_name = f"{last_name}, {first_name}"
     slug = ensure_unique_slug(db, Employee, create_slug(full_name))
 
@@ -53,12 +59,20 @@ async def create_employee(
         first_name=first_name,
         last_name=last_name,
         slug=slug,
-        position_id=position_id,
-        scheduled_days=scheduled_days
+        is_active=is_active
     )
     db.add(new_employee)
-    db.commit()
+    db.flush()
 
+    for schedule in schedules_data:
+        new_schedule = EmployeePositionSchedule(
+            employee_id=new_employee.id,
+            position_id=schedule['position_id'],
+            days_of_week=schedule.get('days_of_week', [])
+        )
+        db.add(new_schedule)
+
+    db.commit()
     return RedirectResponse(url="/employees", status_code=302)
 
 @router.get("/employees/{slug}", response_class=HTMLResponse)
@@ -100,8 +114,8 @@ async def update_employee(
     request: Request,
     first_name: str = Form(...),
     last_name: str = Form(...),
-    position_id: int = Form(...),
-    scheduled_days: List[str] = Form([]),
+    is_active: bool = Form(True),
+    position_schedules: str = Form(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -109,12 +123,28 @@ async def update_employee(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
+    schedules_data = json.loads(position_schedules)
+
+    if not schedules_data or len(schedules_data) == 0:
+        raise HTTPException(status_code=400, detail="At least one position must be assigned")
+
     full_name = f"{last_name}, {first_name}"
     employee.name = full_name
     employee.first_name = first_name
     employee.last_name = last_name
-    employee.position_id = position_id
-    employee.scheduled_days = scheduled_days
+    employee.is_active = is_active
+
+    db.query(EmployeePositionSchedule).filter(
+        EmployeePositionSchedule.employee_id == employee.id
+    ).delete()
+
+    for schedule in schedules_data:
+        new_schedule = EmployeePositionSchedule(
+            employee_id=employee.id,
+            position_id=schedule['position_id'],
+            days_of_week=schedule.get('days_of_week', [])
+        )
+        db.add(new_schedule)
 
     db.commit()
     return RedirectResponse(url=f"/employees/{slug}", status_code=302)

@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h2>{{ employee.display_name }}</h2>
+    <h2>{{ employee.display_name }} {% if not employee.is_active %}<span class="badge" style="background: #dc3545;">Inactive</span>{% endif %}</h2>
     <div>
         <a href="/employees/{{ employee.slug }}/edit" class="btn btn-primary">Edit</a>
         <a href="/employees" class="btn btn-secondary">Back to Employees</a>
@@ -33,26 +33,38 @@
     </div>
 
     <div class="detail-row">
-        <strong>Position:</strong>
-        <span>{{ employee.position.name }}</span>
+        <strong>Status:</strong>
+        <span>{% if employee.is_active %}Active{% else %}Inactive{% endif %}</span>
     </div>
 
     <div class="detail-row">
-        <strong>Scheduled Days:</strong>
-        <span>{{ employee.scheduled_days|join(', ') if employee.scheduled_days else 'None' }}</span>
-    </div>
-
-    <div class="detail-row">
-        <strong>Tip Entry Requirements:</strong>
-        <span>
-            {% if employee.position.tip_requirements %}
-                {% for req in employee.position.tip_requirements %}
-                    <span class="badge">{{ req.name }}</span>
+        <strong>Positions & Schedules:</strong>
+        <div>
+            {% if employee.position_schedules %}
+                {% for schedule in employee.position_schedules %}
+                    <div style="margin-bottom: 10px;">
+                        <strong>{{ schedule.position.name }}:</strong>
+                        {% if schedule.days_of_week %}
+                            {{ schedule.days_of_week|join(', ') }}
+                        {% else %}
+                            <em>No scheduled days (manual add only)</em>
+                        {% endif %}
+                        <div style="margin-left: 20px; margin-top: 5px;">
+                            <small>Tip requirements:</small>
+                            {% if schedule.position.tip_requirements %}
+                                {% for req in schedule.position.tip_requirements %}
+                                    <span class="badge">{{ req.name }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <em>None</em>
+                            {% endif %}
+                        </div>
+                    </div>
                 {% endfor %}
             {% else %}
-                None
+                <em>No positions assigned</em>
             {% endif %}
-        </span>
+        </div>
     </div>
 </div>
 {% endblock %}

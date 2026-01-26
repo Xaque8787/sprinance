@@ -60,6 +60,17 @@ class TipEntryRequirement(Base):
         back_populates="tip_requirements"
     )
 
+class EmployeePositionSchedule(Base):
+    __tablename__ = "employee_position_schedule"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id", ondelete="CASCADE"), nullable=False)
+    position_id = Column(Integer, ForeignKey("positions.id", ondelete="RESTRICT"), nullable=False)
+    days_of_week = Column(JSON, default=list)
+
+    employee = relationship("Employee", back_populates="position_schedules")
+    position = relationship("Position")
+
 class Employee(Base):
     __tablename__ = "employees"
 
@@ -68,10 +79,12 @@ class Employee(Base):
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     slug = Column(String, unique=True, index=True, nullable=False)
-    position_id = Column(Integer, ForeignKey("positions.id"), nullable=False)
+    is_active = Column(Boolean, default=True)
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=True)
     scheduled_days = Column(JSON, default=list)
 
     position = relationship("Position", back_populates="employees")
+    position_schedules = relationship("EmployeePositionSchedule", back_populates="employee", cascade="all, delete-orphan")
     daily_entries = relationship("DailyEmployeeEntry", back_populates="employee")
 
     @property
@@ -109,10 +122,12 @@ class DailyEmployeeEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
     daily_balance_id = Column(Integer, ForeignKey("daily_balance.id"), nullable=False)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=True)
     tip_values = Column(JSON, default=dict)
 
     daily_balance = relationship("DailyBalance", back_populates="employee_entries")
     employee = relationship("Employee", back_populates="daily_entries")
+    position = relationship("Position")
 
     def get_tip_value(self, field_name: str, default=0.0):
         if self.tip_values and isinstance(self.tip_values, dict):

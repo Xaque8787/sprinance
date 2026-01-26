@@ -7,7 +7,7 @@ from datetime import date as date_cls, datetime
 from typing import List, Optional
 import os
 from app.database import get_db
-from app.models import User, Employee, DailyBalance, DailyEmployeeEntry, FinancialLineItemTemplate, DailyFinancialLineItem
+from app.models import User, Employee, DailyBalance, DailyEmployeeEntry, FinancialLineItemTemplate, DailyFinancialLineItem, Position, EmployeePositionSchedule
 from app.auth.jwt_handler import get_current_user
 from app.utils.csv_generator import generate_daily_balance_csv
 
@@ -91,8 +91,8 @@ def save_daily_balance_data(
         )
         db.add(line_item)
 
-    employee_ids = form_data.getlist("employee_ids")
-    employee_ids = [int(emp_id) for emp_id in employee_ids if emp_id]
+    employee_position_combos = form_data.getlist("employee_ids")
+    employee_position_combos = [combo for combo in employee_position_combos if combo]
 
     for entry in daily_balance.employee_entries:
         db.delete(entry)
@@ -100,16 +100,22 @@ def save_daily_balance_data(
 
     max_order = len(financial_templates)
 
-    for emp_id in employee_ids:
+    for combo in employee_position_combos:
+        emp_id, pos_id = combo.split('-')
+        emp_id = int(emp_id)
+        pos_id = int(pos_id)
+
         employee = db.query(Employee).filter(Employee.id == emp_id).first()
-        if not employee:
+        position = db.query(Position).filter(Position.id == pos_id).first()
+
+        if not employee or not position:
             continue
 
         tip_values = {}
 
-        for req in employee.position.tip_requirements:
+        for req in position.tip_requirements:
             if not req.no_input and not req.is_total:
-                field_key = f"tip_{req.field_name}_{emp_id}"
+                field_key = f"tip_{req.field_name}_{combo}"
                 value_str = form_data.get(field_key)
 
                 if value_str is None or value_str == '' or value_str == 'null':
@@ -132,7 +138,7 @@ def save_daily_balance_data(
                     tip_line_item = DailyFinancialLineItem(
                         daily_balance_id=daily_balance.id,
                         template_id=None,
-                        name=f"{employee.display_name} - {req.name}",
+                        name=f"{employee.display_name} ({position.name}) - {req.name}",
                         category="revenue",
                         value=value if not req.revenue_is_deduction else -value,
                         display_order=max_order,
@@ -146,7 +152,7 @@ def save_daily_balance_data(
                     tip_line_item = DailyFinancialLineItem(
                         daily_balance_id=daily_balance.id,
                         template_id=None,
-                        name=f"{employee.display_name} - {req.name}",
+                        name=f"{employee.display_name} ({position.name}) - {req.name}",
                         category="expense",
                         value=value if not req.expense_is_deduction else -value,
                         display_order=max_order,
@@ -157,9 +163,9 @@ def save_daily_balance_data(
 
             elif req.is_total:
                 total = 0
-                for other_req in employee.position.tip_requirements:
+                for other_req in position.tip_requirements:
                     if not other_req.no_input and not other_req.is_total and not other_req.record_data:
-                        field_key = f"tip_{other_req.field_name}_{emp_id}"
+                        field_key = f"tip_{other_req.field_name}_{combo}"
                         value_str = form_data.get(field_key)
 
                         if value_str is None or value_str == '' or value_str == 'null':
@@ -178,6 +184,7 @@ def save_daily_balance_data(
         entry = DailyEmployeeEntry(
             daily_balance_id=daily_balance.id,
             employee_id=emp_id,
+            position_id=pos_id,
             tip_values=tip_values
         )
         db.add(entry)
@@ -187,23 +194,20 @@ def save_daily_balance_data(
 
     return daily_balance
 
-def attach_display_orders_to_employee(emp, db):
+def serialize_employee_position_combo(emp, position, db):
     requirements_with_order = sorted(
-        emp.position.tip_requirements,
+        position.tip_requirements,
         key=lambda req: req.display_order
     )
-    emp.position.tip_requirements = requirements_with_order
-
-def serialize_employee(emp, db):
-    attach_display_orders_to_employee(emp, db)
 
     return {
+        "combo_id": f"{emp.id}-{position.id}",
         "id": emp.id,
         "name": emp.name,
         "display_name": emp.display_name,
         "position": {
-            "id": emp.position.id,
-            "name": emp.position.name,
+            "id": position.id,
+            "name": position.name,
             "tip_requirements": [
                 {
                     "id": req.id,
@@ -220,10 +224,10 @@ def serialize_employee(emp, db):
                     "expense_is_deduction": req.expense_is_deduction,
                     "record_data": req.record_data,
                     "include_in_payroll_summary": req.include_in_payroll_summary
-                } for req in emp.position.tip_requirements
+                } for req in requirements_with_order
             ]
         },
-        "position_name_sort_key": emp.position.name,
+        "position_name_sort_key": position.name,
         "display_name_sort_key": emp.display_name
     }
 
@@ -246,31 +250,37 @@ async def daily_balance_page(
 
     daily_balance = db.query(DailyBalance).filter(DailyBalance.date == target_date).first()
 
-    all_employees = db.query(Employee).all()
-    # Sort all employees by position name, then by display name
-    all_employees = sorted(all_employees, key=lambda emp: (emp.position.name, emp.display_name))
+    all_schedules = db.query(EmployeePositionSchedule).join(Employee).filter(Employee.is_active == True).all()
+    all_employee_position_combos = []
+    for schedule in all_schedules:
+        all_employee_position_combos.append(serialize_employee_position_combo(schedule.employee, schedule.position, db))
 
-    scheduled_employees = [emp for emp in all_employees if day_of_week in emp.scheduled_days]
+    all_employee_position_combos = sorted(all_employee_position_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
+
+    scheduled_combos = []
+    for schedule in all_schedules:
+        if day_of_week in schedule.days_of_week:
+            scheduled_combos.append(serialize_employee_position_combo(schedule.employee, schedule.position, db))
+
+    scheduled_combos = sorted(scheduled_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
 
     employee_entries = {}
     if daily_balance:
         for entry in daily_balance.employee_entries:
-            employee_entries[entry.employee_id] = entry
+            combo_key = f"{entry.employee_id}-{entry.position_id}"
+            employee_entries[combo_key] = entry
 
-    working_employees = []
+    working_combos = []
     if daily_balance:
-        working_employees = [entry.employee for entry in daily_balance.employee_entries]
+        for entry in daily_balance.employee_entries:
+            if entry.employee and entry.position:
+                working_combos.append(serialize_employee_position_combo(entry.employee, entry.position, db))
     else:
-        working_employees = scheduled_employees
+        working_combos = scheduled_combos
 
-    # Sort employees by position name, then by display name
-    working_employees = sorted(working_employees, key=lambda emp: (emp.position.name, emp.display_name))
+    working_combos = sorted(working_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
 
-    for emp in working_employees:
-        attach_display_orders_to_employee(emp, db)
-
-    all_employees_serialized = [serialize_employee(emp, db) for emp in all_employees]
-    working_employee_ids = [emp.id for emp in working_employees]
+    working_combo_ids = [combo["combo_id"] for combo in working_combos]
 
     templates_list = db.query(FinancialLineItemTemplate).order_by(
         FinancialLineItemTemplate.category,
@@ -305,11 +315,11 @@ async def daily_balance_page(
             "target_date": target_date,
             "day_of_week": day_of_week,
             "daily_balance": daily_balance,
-            "all_employees": all_employees_serialized,
-            "working_employees": working_employees,
-            "working_employee_ids": working_employee_ids,
+            "all_employees": all_employee_position_combos,
+            "working_employees": working_combos,
+            "working_employee_ids": working_combo_ids,
             "employee_entries": employee_entries,
-            "scheduled_employees": scheduled_employees,
+            "scheduled_employees": scheduled_combos,
             "edit_mode": edit,
             "financial_templates": templates_list,
             "financial_line_items": financial_line_items,
@@ -333,30 +343,38 @@ async def save_daily_balance_route(
         save_daily_balance_data(db, date_obj, day_of_week, form_data, finalized=False, current_user=current_user, source="user")
         return RedirectResponse(url=f"/daily-balance?selected_date={target_date}", status_code=302)
     except HTTPException as e:
-        all_employees = db.query(Employee).all()
-        all_employees = sorted(all_employees, key=lambda emp: (emp.position.name, emp.display_name))
+        all_schedules = db.query(EmployeePositionSchedule).join(Employee).filter(Employee.is_active == True).all()
+        all_employee_position_combos = []
+        for schedule in all_schedules:
+            all_employee_position_combos.append(serialize_employee_position_combo(schedule.employee, schedule.position, db))
 
-        scheduled_employees = [emp for emp in all_employees if day_of_week in emp.scheduled_days]
+        all_employee_position_combos = sorted(all_employee_position_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
+
+        scheduled_combos = []
+        for schedule in all_schedules:
+            if day_of_week in schedule.days_of_week:
+                scheduled_combos.append(serialize_employee_position_combo(schedule.employee, schedule.position, db))
+
+        scheduled_combos = sorted(scheduled_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
 
         daily_balance = db.query(DailyBalance).filter(DailyBalance.date == date_obj).first()
         employee_entries = {}
         if daily_balance:
             for entry in daily_balance.employee_entries:
-                employee_entries[entry.employee_id] = entry
+                combo_key = f"{entry.employee_id}-{entry.position_id}"
+                employee_entries[combo_key] = entry
 
-        working_employees = []
+        working_combos = []
         if daily_balance:
-            working_employees = [entry.employee for entry in daily_balance.employee_entries]
+            for entry in daily_balance.employee_entries:
+                if entry.employee and entry.position:
+                    working_combos.append(serialize_employee_position_combo(entry.employee, entry.position, db))
         else:
-            working_employees = scheduled_employees
+            working_combos = scheduled_combos
 
-        working_employees = sorted(working_employees, key=lambda emp: (emp.position.name, emp.display_name))
+        working_combos = sorted(working_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
 
-        for emp in working_employees:
-            attach_display_orders_to_employee(emp, db)
-
-        all_employees_serialized = [serialize_employee(emp, db) for emp in all_employees]
-        working_employee_ids = [emp.id for emp in working_employees]
+        working_combo_ids = [combo["combo_id"] for combo in working_combos]
 
         templates_list = db.query(FinancialLineItemTemplate).order_by(
             FinancialLineItemTemplate.category,
@@ -391,11 +409,11 @@ async def save_daily_balance_route(
                 "target_date": date_obj,
                 "day_of_week": day_of_week,
                 "daily_balance": daily_balance,
-                "all_employees": all_employees_serialized,
-                "working_employees": working_employees,
-                "working_employee_ids": working_employee_ids,
+                "all_employees": all_employee_position_combos,
+                "working_employees": working_combos,
+                "working_employee_ids": working_combo_ids,
                 "employee_entries": employee_entries,
-                "scheduled_employees": scheduled_employees,
+                "scheduled_employees": scheduled_combos,
                 "edit_mode": False,
                 "financial_templates": templates_list,
                 "financial_line_items": financial_line_items,
@@ -421,30 +439,38 @@ async def finalize_daily_balance_route(
         generate_daily_balance_csv(daily_balance, daily_balance.employee_entries, current_user=current_user, source="user")
         return RedirectResponse(url=f"/daily-balance?selected_date={target_date}", status_code=302)
     except HTTPException as e:
-        all_employees = db.query(Employee).all()
-        all_employees = sorted(all_employees, key=lambda emp: (emp.position.name, emp.display_name))
+        all_schedules = db.query(EmployeePositionSchedule).join(Employee).filter(Employee.is_active == True).all()
+        all_employee_position_combos = []
+        for schedule in all_schedules:
+            all_employee_position_combos.append(serialize_employee_position_combo(schedule.employee, schedule.position, db))
 
-        scheduled_employees = [emp for emp in all_employees if day_of_week in emp.scheduled_days]
+        all_employee_position_combos = sorted(all_employee_position_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
+
+        scheduled_combos = []
+        for schedule in all_schedules:
+            if day_of_week in schedule.days_of_week:
+                scheduled_combos.append(serialize_employee_position_combo(schedule.employee, schedule.position, db))
+
+        scheduled_combos = sorted(scheduled_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
 
         daily_balance = db.query(DailyBalance).filter(DailyBalance.date == date_obj).first()
         employee_entries = {}
         if daily_balance:
             for entry in daily_balance.employee_entries:
-                employee_entries[entry.employee_id] = entry
+                combo_key = f"{entry.employee_id}-{entry.position_id}"
+                employee_entries[combo_key] = entry
 
-        working_employees = []
+        working_combos = []
         if daily_balance:
-            working_employees = [entry.employee for entry in daily_balance.employee_entries]
+            for entry in daily_balance.employee_entries:
+                if entry.employee and entry.position:
+                    working_combos.append(serialize_employee_position_combo(entry.employee, entry.position, db))
         else:
-            working_employees = scheduled_employees
+            working_combos = scheduled_combos
 
-        working_employees = sorted(working_employees, key=lambda emp: (emp.position.name, emp.display_name))
+        working_combos = sorted(working_combos, key=lambda combo: (combo["position_name_sort_key"], combo["display_name_sort_key"]))
 
-        for emp in working_employees:
-            attach_display_orders_to_employee(emp, db)
-
-        all_employees_serialized = [serialize_employee(emp, db) for emp in all_employees]
-        working_employee_ids = [emp.id for emp in working_employees]
+        working_combo_ids = [combo["combo_id"] for combo in working_combos]
 
         templates_list = db.query(FinancialLineItemTemplate).order_by(
             FinancialLineItemTemplate.category,
@@ -479,11 +505,11 @@ async def finalize_daily_balance_route(
                 "target_date": date_obj,
                 "day_of_week": day_of_week,
                 "daily_balance": daily_balance,
-                "all_employees": all_employees_serialized,
-                "working_employees": working_employees,
-                "working_employee_ids": working_employee_ids,
+                "all_employees": all_employee_position_combos,
+                "working_employees": working_combos,
+                "working_employee_ids": working_combo_ids,
                 "employee_entries": employee_entries,
-                "scheduled_employees": scheduled_employees,
+                "scheduled_employees": scheduled_combos,
                 "edit_mode": False,
                 "financial_templates": templates_list,
                 "financial_line_items": financial_line_items,
