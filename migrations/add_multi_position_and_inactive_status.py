@@ -1,20 +1,33 @@
-import sqlite3
+#!/usr/bin/env python3
+"""
+Multi-Position & Inactive Status Migration
+
+This script sets up the database and applies the multi-position migration.
+Run this once after updating to the multi-position version.
+
+Changes:
+1. Add is_active column to employees table (default TRUE)
+2. Create employee_position_schedule table for multi-position support
+3. Migrate existing data (employee.position_id + scheduled_days → employee_position_schedule)
+4. Add position_id to daily_employee_entries for tracking which position was worked
+5. Make employee.position_id nullable (it's deprecated, kept for backward compatibility)
+
+Historical data preservation:
+- All existing daily_employee_entry records remain untouched
+- Old employee.position_id and scheduled_days columns kept for rollback safety
+"""
+import sys
 import os
+import sqlite3
 import json
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.database import init_db, database_exists
 
 def migrate():
     """
-    Migration: Add multi-position support and inactive status for employees
-
-    Changes:
-    1. Add is_active column to employees table (default TRUE)
-    2. Create employee_position_schedule table for multi-position support
-    3. Migrate existing data (employee.position_id + scheduled_days → employee_position_schedule)
-    4. Keep old columns for safety (position_id, scheduled_days remain but won't be used)
-
-    Historical data preservation:
-    - All existing daily_balance_entry records remain untouched
-    - Old employee.position_id and scheduled_days columns kept for rollback safety
+    Execute the multi-position migration on existing database.
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
@@ -22,7 +35,7 @@ def migrate():
 
     if not os.path.exists(db_path):
         print("Database does not exist. Will be created with new schema.")
-        return
+        return False
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -170,6 +183,7 @@ def migrate():
         print("\n✅ Migration completed successfully!")
         print("\nNote: Old columns (position_id, scheduled_days) kept for safety.")
         print("They will not be used by the application but remain for rollback if needed.")
+        return True
 
     except Exception as e:
         print(f"\n❌ Error during migration: {e}")
@@ -178,5 +192,38 @@ def migrate():
     finally:
         conn.close()
 
+def main():
+    """Main entry point for the migration script."""
+    print("=" * 60)
+    print("Multi-Position & Inactive Status Migration")
+    print("=" * 60)
+
+    if not database_exists():
+        print("\n📦 Database does not exist. Creating new database with updated schema...")
+        init_db()
+        print("✅ Database created successfully!")
+        print("\nℹ️  No migration needed - database was created with the new schema.")
+    else:
+        print("\n📊 Existing database found. Running migration...")
+        print("-" * 60)
+
+        try:
+            migrate()
+            print("-" * 60)
+        except Exception as e:
+            print("-" * 60)
+            print(f"❌ Migration failed: {e}")
+            sys.exit(1)
+
+    print("\n" + "=" * 60)
+    print("Setup Complete!")
+    print("=" * 60)
+    print("\nYou can now:")
+    print("  • Add multiple positions to employees")
+    print("  • Set different schedules per position")
+    print("  • Mark employees as inactive")
+    print("  • All historical data has been preserved")
+    print()
+
 if __name__ == "__main__":
-    migrate()
+    main()
