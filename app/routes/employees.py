@@ -169,12 +169,52 @@ async def update_employee(
 @router.post("/employees/{slug}/delete")
 async def delete_employee(
     slug: str,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    from app.models import DailyEmployeeEntry, DailyFinancialLineItem, ScheduledTask
+
     employee = db.query(Employee).filter(Employee.slug == slug).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
+
+    daily_entries_count = db.query(DailyEmployeeEntry).filter(
+        DailyEmployeeEntry.employee_id == employee.id
+    ).count()
+
+    financial_items_count = db.query(DailyFinancialLineItem).filter(
+        DailyFinancialLineItem.employee_id == employee.id
+    ).count()
+
+    scheduled_tasks_count = db.query(ScheduledTask).filter(
+        ScheduledTask.employee_id == employee.id
+    ).count()
+
+    if daily_entries_count > 0 or financial_items_count > 0 or scheduled_tasks_count > 0:
+        error_details = []
+        if daily_entries_count > 0:
+            error_details.append(f"{daily_entries_count} daily balance entries")
+        if financial_items_count > 0:
+            error_details.append(f"{financial_items_count} financial line items")
+        if scheduled_tasks_count > 0:
+            error_details.append(f"{scheduled_tasks_count} scheduled tasks")
+
+        error_message = f"Cannot delete employee. They have {' and '.join(error_details)} associated with them. Please set the employee as inactive instead."
+
+        if request.headers.get("Accept") == "application/json":
+            raise HTTPException(status_code=400, detail=error_message)
+
+        employees = db.query(Employee).all()
+        return templates.TemplateResponse(
+            "employees/list.html",
+            {
+                "request": request,
+                "employees": employees,
+                "current_user": current_user,
+                "error": error_message
+            }
+        )
 
     db.delete(employee)
     db.commit()

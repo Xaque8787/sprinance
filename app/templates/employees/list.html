@@ -8,6 +8,12 @@
     <a href="/employees/new" class="btn btn-primary">Add New Employee</a>
 </div>
 
+{% if error %}
+<div style="background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
 <div style="margin-bottom: 20px;">
     <input type="text" id="employeeSearch" placeholder="Search employees by name..."
            style="width: 100%; max-width: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
