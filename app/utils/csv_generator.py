@@ -77,10 +77,11 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         all_requirements = []
         requirement_map = {}
         for entry in employee_entries:
-            for req in entry.employee.position.tip_requirements:
-                if req.field_name not in requirement_map:
-                    requirement_map[req.field_name] = req.name
-                    all_requirements.append(req)
+            if entry.position and entry.position.tip_requirements:
+                for req in entry.position.tip_requirements:
+                    if req.field_name not in requirement_map:
+                        requirement_map[req.field_name] = req.name
+                        all_requirements.append(req)
 
         all_requirements.sort(key=lambda r: r.display_order)
 
@@ -91,7 +92,8 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         writer.writerow(header_row)
 
         for entry in employee_entries:
-            row = [entry.employee.display_name, entry.employee.position.name]
+            position_name = entry.position.name if entry.position else "Unknown"
+            row = [entry.employee.display_name, position_name]
             for req in all_requirements:
                 value = entry.get_tip_value(req.field_name, 0.0)
                 row.append(f"${value:.2f}")
@@ -139,23 +141,35 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
                 DailyBalance.date <= end_date
             ).all()
 
-            if entries and employee.position.tip_requirements:
-                payroll_reqs = [req for req in employee.position.tip_requirements if req.include_in_payroll_summary]
+            if entries:
+                for entry in entries:
+                    if entry.position and entry.position.tip_requirements:
+                        payroll_reqs = [req for req in entry.position.tip_requirements if req.include_in_payroll_summary]
 
-                if payroll_reqs:
-                    emp_data = {"employee": employee.display_name, "position": employee.position.name}
+                        if payroll_reqs:
+                            position_name = entry.position.name
+                            emp_key = f"{employee.display_name}|{position_name}"
 
-                    for req in payroll_reqs:
-                        if req.field_name not in payroll_reqs_map:
-                            payroll_reqs_map[req.field_name] = req.name
+                            existing_data = next((d for d in payroll_summary_data if d.get('emp_key') == emp_key), None)
 
-                        total = 0
-                        for entry in entries:
-                            if entry.tip_values:
-                                total += entry.tip_values.get(req.field_name, 0)
-                        emp_data[req.field_name] = total
+                            if not existing_data:
+                                emp_data = {
+                                    "emp_key": emp_key,
+                                    "employee": employee.display_name,
+                                    "position": position_name
+                                }
+                                for req in payroll_reqs:
+                                    if req.field_name not in payroll_reqs_map:
+                                        payroll_reqs_map[req.field_name] = req.name
+                                    emp_data[req.field_name] = 0
+                                payroll_summary_data.append(emp_data)
+                                existing_data = emp_data
 
-                    payroll_summary_data.append(emp_data)
+                            for req in payroll_reqs:
+                                if req.field_name not in payroll_reqs_map:
+                                    payroll_reqs_map[req.field_name] = req.name
+                                if entry.tip_values:
+                                    existing_data[req.field_name] = existing_data.get(req.field_name, 0) + entry.tip_values.get(req.field_name, 0)
 
         if payroll_summary_data:
             header_row = ["Employee Name", "Position"] + [payroll_reqs_map[field] for field in payroll_reqs_map.keys()]
@@ -188,18 +202,37 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
                 DailyBalance.date <= end_date
             ).all()
 
-            if entries and employee.position.tip_requirements:
-                emp_summary = {"employee": employee.display_name, "position": employee.position.name}
+            if entries:
+                entries_by_position = {}
+                for entry in entries:
+                    if entry.position:
+                        pos_name = entry.position.name
+                        if pos_name not in entries_by_position:
+                            entries_by_position[pos_name] = {
+                                "position": entry.position,
+                                "entries": []
+                            }
+                        entries_by_position[pos_name]["entries"].append(entry)
 
-                for req in employee.position.tip_requirements:
-                    if req.field_name not in all_reqs_map:
-                        all_reqs_map[req.field_name] = req.name
+                for pos_name, pos_data in entries_by_position.items():
+                    position = pos_data["position"]
+                    pos_entries = pos_data["entries"]
 
-                    total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
-                    emp_summary[req.field_name] = total
+                    if position.tip_requirements:
+                        emp_summary = {
+                            "employee": employee.display_name,
+                            "position": pos_name
+                        }
 
-                emp_summary["num_shifts"] = len(entries)
-                summary_data.append(emp_summary)
+                        for req in position.tip_requirements:
+                            if req.field_name not in all_reqs_map:
+                                all_reqs_map[req.field_name] = req.name
+
+                            total = sum(entry.get_tip_value(req.field_name, 0) for entry in pos_entries)
+                            emp_summary[req.field_name] = total
+
+                        emp_summary["num_shifts"] = len(pos_entries)
+                        summary_data.append(emp_summary)
 
         if summary_data:
             header_row = ["Employee Name", "Position"]
@@ -233,35 +266,51 @@ def generate_tip_report_csv(db: Session, start_date: date, end_date: date, curre
                 DailyBalance.date <= end_date
             ).order_by(DailyBalance.date).all()
 
-            if entries and employee.position.tip_requirements:
-                writer.writerow([f"Employee: {employee.display_name} - {employee.position.name}"])
-
-                header_row = ["Date", "Day"]
-                for req in employee.position.tip_requirements:
-                    header_row.append(req.name)
-                writer.writerow(header_row)
-
-                total_row = ["TOTAL", ""]
-                tip_totals = {req.field_name: 0 for req in employee.position.tip_requirements}
-
+            if entries:
+                entries_by_position = {}
                 for entry in entries:
-                    row = [
-                        entry.daily_balance.date.strftime("%Y-%m-%d"),
-                        entry.daily_balance.date.strftime("%A")
-                    ]
+                    if entry.position:
+                        pos_name = entry.position.name
+                        if pos_name not in entries_by_position:
+                            entries_by_position[pos_name] = {
+                                "position": entry.position,
+                                "entries": []
+                            }
+                        entries_by_position[pos_name]["entries"].append(entry)
 
-                    for req in employee.position.tip_requirements:
-                        value = entry.get_tip_value(req.field_name, 0)
-                        row.append(f"${value:.2f}")
-                        tip_totals[req.field_name] += value
+                for pos_name, pos_data in entries_by_position.items():
+                    position = pos_data["position"]
+                    pos_entries = pos_data["entries"]
 
-                    writer.writerow(row)
+                    if position.tip_requirements:
+                        writer.writerow([f"Employee: {employee.display_name} - {pos_name}"])
 
-                for req in employee.position.tip_requirements:
-                    total_row.append(f"${tip_totals[req.field_name]:.2f}")
+                        header_row = ["Date", "Day"]
+                        for req in position.tip_requirements:
+                            header_row.append(req.name)
+                        writer.writerow(header_row)
 
-                writer.writerow(total_row)
-                writer.writerow([])
+                        total_row = ["TOTAL", ""]
+                        tip_totals = {req.field_name: 0 for req in position.tip_requirements}
+
+                        for entry in pos_entries:
+                            row = [
+                                entry.daily_balance.date.strftime("%Y-%m-%d"),
+                                entry.daily_balance.date.strftime("%A")
+                            ]
+
+                            for req in position.tip_requirements:
+                                value = entry.get_tip_value(req.field_name, 0)
+                                row.append(f"${value:.2f}")
+                                tip_totals[req.field_name] += value
+
+                            writer.writerow(row)
+
+                        for req in position.tip_requirements:
+                            total_row.append(f"${tip_totals[req.field_name]:.2f}")
+
+                        writer.writerow(total_row)
+                        writer.writerow([])
 
     return filename
 
@@ -345,10 +394,11 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
             all_requirements = []
             requirement_map = {}
             for entry in sorted_entries:
-                for req in entry.employee.position.tip_requirements:
-                    if req.field_name not in requirement_map:
-                        requirement_map[req.field_name] = req.name
-                        all_requirements.append(req)
+                if entry.position and entry.position.tip_requirements:
+                    for req in entry.position.tip_requirements:
+                        if req.field_name not in requirement_map:
+                            requirement_map[req.field_name] = req.name
+                            all_requirements.append(req)
 
             all_requirements.sort(key=lambda r: r.display_order)
 
@@ -359,7 +409,8 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
             writer.writerow(header_row)
 
             for entry in sorted_entries:
-                row = [entry.employee.display_name, entry.employee.position.name]
+                position_name = entry.position.name if entry.position else "Unknown"
+                row = [entry.employee.display_name, position_name]
                 for req in all_requirements:
                     value = entry.get_tip_value(req.field_name, 0.0)
                     row.append(f"${value:.2f}")
@@ -408,9 +459,11 @@ def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date
     with open(filepath, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
 
+        positions_list = ", ".join([schedule.position.name for schedule in employee.position_schedules]) if employee.position_schedules else "No position assigned"
+
         writer.writerow(["Employee Tip Report"])
         writer.writerow(["Employee", employee.display_name])
-        writer.writerow(["Position", employee.position.name])
+        writer.writerow(["Positions", positions_list])
         writer.writerow(["Date Range", f"{start_date} to {end_date}"])
 
         if source == "scheduled_task":
@@ -425,64 +478,85 @@ def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date
             writer.writerow(["No entries found for this employee in the selected date range"])
             return filename
 
-        # Payroll Summary Section
-        if employee.position.tip_requirements:
-            payroll_reqs = [req for req in employee.position.tip_requirements if req.include_in_payroll_summary]
+        entries_by_position = {}
+        all_tip_requirements = {}
 
-            if payroll_reqs:
-                writer.writerow(["PAYROLL SUMMARY"])
+        for entry in entries:
+            if entry.position:
+                pos_name = entry.position.name
+                if pos_name not in entries_by_position:
+                    entries_by_position[pos_name] = {
+                        "position": entry.position,
+                        "entries": []
+                    }
+                entries_by_position[pos_name]["entries"].append(entry)
+
+                if entry.position.tip_requirements:
+                    for req in entry.position.tip_requirements:
+                        if req.field_name not in all_tip_requirements:
+                            all_tip_requirements[req.field_name] = req
+
+        for pos_name, pos_data in entries_by_position.items():
+            position = pos_data["position"]
+            pos_entries = pos_data["entries"]
+
+            writer.writerow([f"Position: {pos_name}"])
+            writer.writerow([])
+
+            if position.tip_requirements:
+                payroll_reqs = [req for req in position.tip_requirements if req.include_in_payroll_summary]
+
+                if payroll_reqs:
+                    writer.writerow(["PAYROLL SUMMARY"])
+                    writer.writerow([])
+
+                    for req in payroll_reqs:
+                        total = 0
+                        for entry in pos_entries:
+                            if entry.tip_values:
+                                total += entry.tip_values.get(req.field_name, 0)
+                        writer.writerow([req.name, f"${total:.2f}"])
+
+                    writer.writerow([])
+
+                writer.writerow(["Summary"])
                 writer.writerow([])
 
-                for req in payroll_reqs:
-                    total = 0
-                    for entry in entries:
-                        if entry.tip_values:
-                            total += entry.tip_values.get(req.field_name, 0)
-                    writer.writerow([req.name, f"${total:.2f}"])
+                for req in position.tip_requirements:
+                    total = sum(entry.get_tip_value(req.field_name, 0) for entry in pos_entries)
+                    writer.writerow([f"Total {req.name}", f"${total:.2f}"])
 
+                writer.writerow(["Number of Shifts", str(len(pos_entries))])
                 writer.writerow([])
 
-        # Summary Section
-        writer.writerow(["Summary"])
-        writer.writerow([])
+                writer.writerow(["Daily Breakdown"])
+                writer.writerow([])
 
-        if employee.position.tip_requirements:
-            for req in employee.position.tip_requirements:
-                total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
-                writer.writerow([f"Total {req.name}", f"${total:.2f}"])
+                header_row = ["Date", "Day"]
+                for req in position.tip_requirements:
+                    header_row.append(req.name)
+                writer.writerow(header_row)
 
-        writer.writerow(["Number of Shifts", str(len(entries))])
-        writer.writerow([])
+                total_row = ["TOTAL", ""]
+                tip_totals = {req.field_name: 0 for req in position.tip_requirements}
 
-        # Daily Breakdown
-        writer.writerow(["Daily Breakdown"])
-        writer.writerow([])
+                for entry in pos_entries:
+                    row = [
+                        entry.daily_balance.date.strftime("%Y-%m-%d"),
+                        entry.daily_balance.date.strftime("%A")
+                    ]
 
-        if employee.position.tip_requirements:
-            header_row = ["Date", "Day"]
-            for req in employee.position.tip_requirements:
-                header_row.append(req.name)
-            writer.writerow(header_row)
+                    for req in position.tip_requirements:
+                        value = entry.get_tip_value(req.field_name, 0)
+                        row.append(f"${value:.2f}")
+                        tip_totals[req.field_name] += value
 
-            total_row = ["TOTAL", ""]
-            tip_totals = {req.field_name: 0 for req in employee.position.tip_requirements}
+                    writer.writerow(row)
 
-            for entry in entries:
-                row = [
-                    entry.daily_balance.date.strftime("%Y-%m-%d"),
-                    entry.daily_balance.date.strftime("%A")
-                ]
+                for req in position.tip_requirements:
+                    total_row.append(f"${tip_totals[req.field_name]:.2f}")
 
-                for req in employee.position.tip_requirements:
-                    value = entry.get_tip_value(req.field_name, 0)
-                    row.append(f"${value:.2f}")
-                    tip_totals[req.field_name] += value
-
-                writer.writerow(row)
-
-            for req in employee.position.tip_requirements:
-                total_row.append(f"${tip_totals[req.field_name]:.2f}")
-
-            writer.writerow(total_row)
+                writer.writerow(total_row)
+                writer.writerow([])
 
     return filename

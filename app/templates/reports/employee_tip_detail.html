@@ -7,7 +7,16 @@
     <div class="page-header">
         <div>
             <a href="/reports/tip-report" class="breadcrumb">← Back to Tip Reports</a>
-            <h1>{{ employee.display_name }} - {{ employee.position.name }}</h1>
+            <h1>{{ employee.display_name }}</h1>
+            <p style="margin: 0; color: #6c757d;">
+                {% if employee.position_schedules %}
+                    {% for schedule in employee.position_schedules %}
+                        {{ schedule.position.name }}{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                {% else %}
+                    No positions assigned
+                {% endif %}
+            </p>
         </div>
         <button type="button" class="btn btn-primary" onclick="openExportModal()">
             Export Report
@@ -44,50 +53,59 @@
         </div>
     </div>
 
-    <div class="summary-cards">
-        {% for req in employee.position.tip_requirements %}
-            {% if req.field_name in tip_totals %}
-                <div class="summary-card {% if req.is_total %}highlight{% endif %}">
-                    <h3>Total {{ req.name }}</h3>
-                    <p class="summary-value">${{ "%.2f"|format(tip_totals[req.field_name]) }}</p>
-                </div>
-            {% endif %}
-        {% endfor %}
-    </div>
+    {% if entries_by_position %}
+        {% for pos_name, pos_data in entries_by_position.items() %}
+        <div class="position-section">
+            <h2 style="margin-bottom: 1.5rem; color: #2c3e50;">{{ pos_name }}</h2>
 
-    {% if entries %}
-    <div class="entries-list">
-        <h3>Daily Entries ({{ start_date }} to {{ end_date }})</h3>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Day</th>
-                    {% for req in employee.position.tip_requirements %}
-                        <th>{{ req.name }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for entry in entries %}
-                <tr>
-                    <td>{{ entry.daily_balance.date.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ entry.daily_balance.date.strftime('%A') }}</td>
-                    {% for req in employee.position.tip_requirements %}
-                        <td {% if req.is_total %}class="highlight-cell"{% endif %}>${{ "%.2f"|format(entry.get_tip_value(req.field_name, 0)) }}</td>
-                    {% endfor %}
-                </tr>
+            <div class="summary-cards">
+                {% for field_name, total in pos_data.tip_totals.items() %}
+                    {% set req = [r for r in pos_data.position.tip_requirements if r.field_name == field_name][0] %}
+                    <div class="summary-card {% if req.is_total %}highlight{% endif %}">
+                        <h3>Total {{ req.name }}</h3>
+                        <p class="summary-value">${{ "%.2f"|format(total) }}</p>
+                    </div>
                 {% endfor %}
-            </tbody>
-            <tfoot>
-                <tr class="totals-row">
-                    <td colspan="2"><strong>Totals</strong></td>
-                    {% for req in employee.position.tip_requirements %}
-                        <td {% if req.is_total %}class="highlight-cell"{% endif %}><strong>${{ "%.2f"|format(tip_totals.get(req.field_name, 0)) }}</strong></td>
-                    {% endfor %}
-                </tr>
-            </tfoot>
-        </table>
+            </div>
+
+            <div class="entries-list">
+                <h3>Daily Entries ({{ start_date }} to {{ end_date }})</h3>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Day</th>
+                            {% for req in pos_data.position.tip_requirements %}
+                                <th>{{ req.name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in pos_data.entries %}
+                        <tr>
+                            <td>{{ entry.daily_balance.date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ entry.daily_balance.date.strftime('%A') }}</td>
+                            {% for req in pos_data.position.tip_requirements %}
+                                <td {% if req.is_total %}class="highlight-cell"{% endif %}>${{ "%.2f"|format(entry.get_tip_value(req.field_name, 0)) }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="totals-row">
+                            <td colspan="2"><strong>Totals</strong></td>
+                            {% for req in pos_data.position.tip_requirements %}
+                                <td {% if req.is_total %}class="highlight-cell"{% endif %}><strong>${{ "%.2f"|format(pos_data.tip_totals.get(req.field_name, 0)) }}</strong></td>
+                            {% endfor %}
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% elif entries %}
+    <div class="empty-state">
+        <p>This employee has entries but they are not associated with any position</p>
     </div>
     {% else %}
     <div class="empty-state">
@@ -324,6 +342,16 @@
 .highlight-cell {
     background: #e3f2fd;
     font-weight: 600;
+}
+
+.position-section {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.position-section:last-child {
+    border-bottom: none;
 }
 
 .empty-state {

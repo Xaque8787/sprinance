@@ -329,16 +329,16 @@
                     </div>
                     {% set current_position.name = emp.position.name %}
                 {% endif %}
-            <div class="employee-entry" id="entry-{{ emp.id }}" data-employee-id="{{ emp.id }}" data-position-id="{{ emp.position.id }}" data-position-name="{{ emp.position.name }}" data-display-name="{{ emp.display_name }}">
+            <div class="employee-entry" id="entry-{{ emp.combo_id }}" data-combo-id="{{ emp.combo_id }}" data-employee-id="{{ emp.id }}" data-position-id="{{ emp.position.id }}" data-position-name="{{ emp.position.name }}" data-display-name="{{ emp.display_name }}">
                 <div class="employee-entry-header">
                     <h4>{{ emp.display_name }} - {{ emp.position.name }}</h4>
                     {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
-                    <button type="button" class="btn-icon btn-remove" onclick="removeEmployee({{ emp.id }})" title="Remove employee">
+                    <button type="button" class="btn-icon btn-remove" onclick="removeEmployee('{{ emp.combo_id }}')" title="Remove employee">
                         <span class="icon">−</span>
                     </button>
                     {% endif %}
                 </div>
-                <input type="hidden" name="employee_ids" value="{{ emp.id }}" class="employee-id-input">
+                <input type="hidden" name="employee_ids" value="{{ emp.combo_id }}" class="employee-id-input">
 
                 <div class="form-row">
                     {% for req in emp.position.tip_requirements %}
@@ -347,14 +347,14 @@
                             <label>{{ req.name }}{% if req.no_null_value and not req.is_total %} <span style="color: #dc2626;">*</span>{% endif %}</label>
                             {% if req.is_total %}
                             <input type="number" step="0.01" readonly
-                                   value="{% if employee_entries.get(emp.id) and employee_entries.get(emp.id).tip_values and employee_entries.get(emp.id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.id).tip_values.get(req.field_name) }}{% else %}0.00{% endif %}"
+                                   value="{% if employee_entries.get(emp.combo_id) and employee_entries.get(emp.combo_id).tip_values and employee_entries.get(emp.combo_id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.combo_id).tip_values.get(req.field_name) }}{% else %}0.00{% endif %}"
                                    class="calculated-field tip-total-field"
-                                   data-employee-id="{{ emp.id }}"
+                                   data-combo-id="{{ emp.combo_id }}"
                                    data-field-name="{{ req.field_name }}">
                             {% else %}
-                            <input type="number" step="0.01" name="tip_{{ req.field_name }}_{{ emp.id }}"
+                            <input type="number" step="0.01" name="tip_{{ req.field_name }}_{{ emp.combo_id }}"
                                    class="tip-input"
-                                   data-employee-id="{{ emp.id }}"
+                                   data-combo-id="{{ emp.combo_id }}"
                                    data-field-name="{{ req.field_name }}"
                                    data-is-deduction="{{ req.is_deduction|lower }}"
                                    data-record-data="{{ req.record_data|lower }}"
@@ -362,7 +362,7 @@
                                    data-revenue-is-deduction="{{ req.revenue_is_deduction|lower }}"
                                    data-apply-to-expense="{{ req.apply_to_expense|lower }}"
                                    data-expense-is-deduction="{{ req.expense_is_deduction|lower }}"
-                                   value="{% if employee_entries.get(emp.id) and employee_entries.get(emp.id).tip_values and employee_entries.get(emp.id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.id).tip_values.get(req.field_name) }}{% else %}0.00{% endif %}"
+                                   value="{% if employee_entries.get(emp.combo_id) and employee_entries.get(emp.combo_id).tip_values and employee_entries.get(emp.combo_id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.combo_id).tip_values.get(req.field_name) }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% endif %}
                         </div>
@@ -440,10 +440,10 @@ function updateAddEmployeeDropdown() {
         return;
     }
 
-    const currentEmployeeIds = new Set();
+    const currentComboIds = new Set();
 
     document.querySelectorAll('.employee-id-input').forEach(input => {
-        currentEmployeeIds.add(parseInt(input.value));
+        currentComboIds.add(input.value);
     });
 
     select.innerHTML = '<option value="">Select an employee...</option>';
@@ -451,7 +451,7 @@ function updateAddEmployeeDropdown() {
     // Group employees by position
     const employeesByPosition = {};
     allEmployees.forEach(emp => {
-        if (!currentEmployeeIds.has(emp.id)) {
+        if (!currentComboIds.has(emp.combo_id)) {
             if (!employeesByPosition[emp.position.name]) {
                 employeesByPosition[emp.position.name] = [];
             }
@@ -467,7 +467,7 @@ function updateAddEmployeeDropdown() {
 
         employeesByPosition[positionName].forEach(emp => {
             const option = document.createElement('option');
-            option.value = emp.id;
+            option.value = emp.combo_id;
             option.textContent = emp.display_name;
             option.dataset.employee = JSON.stringify(emp);
             optgroup.appendChild(option);
@@ -506,7 +506,8 @@ function addEmployeeEntry(emp) {
 
     const entryDiv = document.createElement('div');
     entryDiv.className = 'employee-entry';
-    entryDiv.id = `entry-${emp.id}`;
+    entryDiv.id = `entry-${emp.combo_id}`;
+    entryDiv.dataset.comboId = emp.combo_id;
     entryDiv.dataset.employeeId = emp.id;
     entryDiv.dataset.positionId = emp.position.id;
     entryDiv.dataset.positionName = emp.position.name;
@@ -522,7 +523,7 @@ function addEmployeeEntry(emp) {
                         <label>${req.name}</label>
                         <input type="number" step="0.01" readonly value="0.00"
                                class="calculated-field tip-total-field"
-                               data-employee-id="${emp.id}"
+                               data-combo-id="${emp.combo_id}"
                                data-field-name="${req.field_name}">
                     </div>
                 `;
@@ -531,9 +532,9 @@ function addEmployeeEntry(emp) {
                     <div class="form-group">
                         <label>${req.name}${requiredMark}</label>
                         <input type="number" step="0.01"
-                               name="tip_${req.field_name}_${emp.id}"
+                               name="tip_${req.field_name}_${emp.combo_id}"
                                class="tip-input"
-                               data-employee-id="${emp.id}"
+                               data-combo-id="${emp.combo_id}"
                                data-field-name="${req.field_name}"
                                data-is-deduction="${req.is_deduction}"
                                data-record-data="${req.record_data}"
@@ -557,11 +558,11 @@ function addEmployeeEntry(emp) {
     entryDiv.innerHTML = `
         <div class="employee-entry-header">
             <h4>${emp.display_name} - ${emp.position.name}</h4>
-            <button type="button" class="btn-icon btn-remove" onclick="removeEmployee(${emp.id})" title="Remove employee">
+            <button type="button" class="btn-icon btn-remove" onclick="removeEmployee('${emp.combo_id}')" title="Remove employee">
                 <span class="icon">−</span>
             </button>
         </div>
-        <input type="hidden" name="employee_ids" value="${emp.id}" class="employee-id-input">
+        <input type="hidden" name="employee_ids" value="${emp.combo_id}" class="employee-id-input">
         <div class="form-row">
             ${tipFields}
         </div>
@@ -595,7 +596,7 @@ function addEmployeeEntry(emp) {
     }
 
     attachEmployeeInputListeners(entryDiv);
-    calculateEmployeeTipTotals(emp.id);
+    calculateEmployeeTipTotals(emp.combo_id);
     updatePositionHeaders();
     updateEmployeeTipsInFinancialTables();
 }
@@ -626,9 +627,9 @@ function updatePositionHeaders() {
     });
 }
 
-function removeEmployee(employeeId) {
+function removeEmployee(comboId) {
     if (confirm('Remove this employee from today\'s entries?')) {
-        const entry = document.getElementById(`entry-${employeeId}`);
+        const entry = document.getElementById(`entry-${comboId}`);
         if (entry) {
             entry.remove();
             updatePositionHeaders();
@@ -638,8 +639,8 @@ function removeEmployee(employeeId) {
     }
 }
 
-function calculateEmployeeTipTotals(employeeId) {
-    const entry = document.getElementById(`entry-${employeeId}`);
+function calculateEmployeeTipTotals(comboId) {
+    const entry = document.getElementById(`entry-${comboId}`);
     if (!entry) return;
 
     const tipInputs = entry.querySelectorAll('.tip-input');
@@ -727,8 +728,8 @@ function attachEmployeeInputListeners(container) {
     const inputs = container.querySelectorAll('.tip-input');
     inputs.forEach(input => {
         input.addEventListener('input', function() {
-            const employeeId = this.dataset.employeeId;
-            calculateEmployeeTipTotals(employeeId);
+            const comboId = this.dataset.comboId;
+            calculateEmployeeTipTotals(comboId);
             updateEmployeeTipsInFinancialTables();
             if (this.value !== '') {
                 this.classList.remove('field-error-highlight');

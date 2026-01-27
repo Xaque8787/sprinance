@@ -279,11 +279,28 @@ async def employee_tip_report(
         DailyBalance.date <= end_date_obj
     ).order_by(DailyBalance.date.desc()).all()
 
-    tip_totals = {}
-    if employee.position.tip_requirements:
-        for req in employee.position.tip_requirements:
-            total = sum(entry.get_tip_value(req.field_name, 0) for entry in entries)
-            tip_totals[req.field_name] = total
+    entries_by_position = {}
+    all_tip_requirements = {}
+
+    for entry in entries:
+        if entry.position:
+            pos_name = entry.position.name
+            if pos_name not in entries_by_position:
+                entries_by_position[pos_name] = {
+                    "position": entry.position,
+                    "entries": [],
+                    "tip_totals": {}
+                }
+            entries_by_position[pos_name]["entries"].append(entry)
+
+            if entry.position.tip_requirements:
+                for req in entry.position.tip_requirements:
+                    if req.field_name not in entries_by_position[pos_name]["tip_totals"]:
+                        entries_by_position[pos_name]["tip_totals"][req.field_name] = 0
+                    entries_by_position[pos_name]["tip_totals"][req.field_name] += entry.get_tip_value(req.field_name, 0)
+
+                    if req.field_name not in all_tip_requirements:
+                        all_tip_requirements[req.field_name] = req
 
     prev_month = target_date - relativedelta(months=1)
     next_month = target_date + relativedelta(months=1)
@@ -295,12 +312,12 @@ async def employee_tip_report(
             "current_user": current_user,
             "employee": employee,
             "entries": entries,
+            "entries_by_position": entries_by_position,
             "start_date": start_date_obj,
             "end_date": end_date_obj,
             "current_month": target_date,
             "prev_month": prev_month,
             "next_month": next_month,
-            "tip_totals": tip_totals,
             "is_custom_range": bool(start_date and end_date)
         }
     )

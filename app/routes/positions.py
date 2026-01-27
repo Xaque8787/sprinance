@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
 from app.database import get_db
-from app.models import User, Position, TipEntryRequirement
+from app.models import User, Position, TipEntryRequirement, EmployeePositionSchedule
 from app.auth.jwt_handler import get_current_user
 from app.utils.slugify import create_slug, ensure_unique_slug
 
@@ -136,6 +136,17 @@ async def delete_position(
     position = db.query(Position).filter(Position.slug == slug).first()
     if not position:
         raise HTTPException(status_code=404, detail="Position not found")
+
+    employee_count = db.query(EmployeePositionSchedule).filter(
+        EmployeePositionSchedule.position_id == position.id
+    ).count()
+
+    if employee_count > 0:
+        employee_word = "employee" if employee_count == 1 else "employees"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete {position.name} - {employee_count} {employee_word} are scheduled for this position"
+        )
 
     db.delete(position)
     db.commit()

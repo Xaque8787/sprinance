@@ -8,22 +8,46 @@
     <a href="/employees/new" class="btn btn-primary">Add New Employee</a>
 </div>
 
+<div style="margin-bottom: 20px;">
+    <input type="text" id="employeeSearch" placeholder="Search employees by name..."
+           style="width: 100%; max-width: 400px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+    <small id="searchHint" style="display: block; margin-top: 5px; color: #666;">Type at least 3 characters to search</small>
+</div>
+
 <div class="table-container">
     <table class="data-table">
         <thead>
             <tr>
                 <th>Name</th>
-                <th>Position</th>
-                <th>Scheduled Days</th>
+                <th>Status</th>
+                <th>Positions & Schedules</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for employee in employees %}
-            <tr>
-                <td><a href="/employees/{{ employee.slug }}">{{ employee.display_name }}</a></td>
-                <td>{{ employee.position.name }}</td>
-                <td>{{ employee.scheduled_days|join(', ') if employee.scheduled_days else 'None' }}</td>
+            <tr {% if not employee.is_active %}style="opacity: 0.6;"{% endif %}>
+                <td>
+                    <a href="/employees/{{ employee.slug }}">{{ employee.display_name }}</a>
+                    {% if not employee.is_active %}<span class="badge" style="background: #dc3545; font-size: 11px; margin-left: 5px;">Inactive</span>{% endif %}
+                </td>
+                <td>{% if employee.is_active %}Active{% else %}Inactive{% endif %}</td>
+                <td>
+                    {% if employee.position_schedules %}
+                        {% for schedule in employee.position_schedules %}
+                            <div style="margin-bottom: 5px;">
+                                <strong>{{ schedule.position.name }}:</strong>
+                                {% if schedule.days_of_week %}
+                                    {{ schedule.days_of_week|join(', ') }}
+                                {% else %}
+                                    <em>No schedule</em>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <em>No positions</em>
+                    {% endif %}
+                </td>
                 <td>
                     <a href="/employees/{{ employee.slug }}/edit" class="btn btn-small">Edit</a>
                     <form method="POST" action="/employees/{{ employee.slug }}/delete" style="display: inline;">
@@ -35,4 +59,46 @@
         </tbody>
     </table>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('employeeSearch');
+    const searchHint = document.getElementById('searchHint');
+    const tableRows = document.querySelectorAll('.data-table tbody tr');
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+
+        if (searchTerm.length > 0 && searchTerm.length < 3) {
+            searchHint.textContent = 'Type at least 3 characters to search';
+            searchHint.style.color = '#666';
+            tableRows.forEach(row => row.style.display = '');
+            return;
+        }
+
+        if (searchTerm.length === 0) {
+            searchHint.textContent = 'Type at least 3 characters to search';
+            searchHint.style.color = '#666';
+            tableRows.forEach(row => row.style.display = '');
+            return;
+        }
+
+        let visibleCount = 0;
+        tableRows.forEach(row => {
+            const nameCell = row.querySelector('td:first-child');
+            const name = nameCell.textContent.toLowerCase();
+
+            if (name.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        searchHint.textContent = `Showing ${visibleCount} of ${tableRows.length} employees`;
+        searchHint.style.color = '#28a745';
+    });
+});
+</script>
 {% endblock %}

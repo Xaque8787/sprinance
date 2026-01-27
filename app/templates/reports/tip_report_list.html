@@ -73,7 +73,15 @@
                 {% for employee in employees %}
                 <tr>
                     <td>{{ employee.display_name }}</td>
-                    <td>{{ employee.position.name }}</td>
+                    <td>
+                        {% if employee.position_schedules %}
+                            {% for schedule in employee.position_schedules %}
+                                {{ schedule.position.name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            No positions assigned
+                        {% endif %}
+                    </td>
                     <td>{{ employee.entry_count }}</td>
                     <td>
                         <a href="/reports/tip-report/employee/{{ employee.slug }}" class="btn btn-primary btn-sm">
