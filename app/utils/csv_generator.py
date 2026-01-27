@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.models import DailyBalance, DailyEmployeeEntry, Employee, User
 
 def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: List[DailyEmployeeEntry], current_user: Optional[User] = None, source: str = "user") -> str:
-    # Sort employees by last name, first name
-    employee_entries = sorted(employee_entries, key=lambda e: (e.employee.last_name or '', e.employee.first_name or ''))
+    # Sort employees by display name
+    employee_entries = sorted(employee_entries, key=lambda e: e.employee_display_name)
 
     # Parse the date to get year and month
     if isinstance(daily_balance.date, str):
@@ -92,8 +92,8 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
         writer.writerow(header_row)
 
         for entry in employee_entries:
-            position_name = entry.position.name if entry.position else "Unknown"
-            row = [entry.employee.display_name, position_name]
+            position_name = entry.position_display_name
+            row = [entry.employee_display_name, position_name]
             for req in all_requirements:
                 value = entry.get_tip_value(req.field_name, 0.0)
                 row.append(f"${value:.2f}")
@@ -389,7 +389,7 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
             writer.writerow(["Cash Over/Under", f"${cash_over_under:.2f}"])
             writer.writerow([])
 
-            sorted_entries = sorted(daily_balance.employee_entries, key=lambda e: (e.employee.last_name or '', e.employee.first_name or ''))
+            sorted_entries = sorted(daily_balance.employee_entries, key=lambda e: e.employee_display_name)
 
             all_requirements = []
             requirement_map = {}
@@ -409,8 +409,8 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
             writer.writerow(header_row)
 
             for entry in sorted_entries:
-                position_name = entry.position.name if entry.position else "Unknown"
-                row = [entry.employee.display_name, position_name]
+                position_name = entry.position_display_name
+                row = [entry.employee_display_name, position_name]
                 for req in all_requirements:
                     value = entry.get_tip_value(req.field_name, 0.0)
                     row.append(f"${value:.2f}")
