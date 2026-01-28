@@ -1,0 +1,3 @@
+Any upgrade or updates to code that require a migration, a migration script should be created in the /migration directory and it should adhere to the migration syntax and format defined in the MIGRATION_SYSTEM.md
+
+Any upgrade or update to the code that creates a new table should ensure that the table is created in the init_db, as to ensure fresh or existing databases have the proper tables.
