@@ -5,7 +5,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import date
 from app.database import init_db, get_db
-from app.models import User, Position, TipEntryRequirement
+from app.models import User, Position, TipEntryRequirement, Setting
 from app.auth.jwt_handler import get_current_user_from_cookie
 from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items, scheduled_tasks
 from app.utils.slugify import create_slug
@@ -33,10 +33,31 @@ def initialize_predefined_data():
     # Users will create these manually via the UI
     pass
 
+def initialize_default_settings():
+    """Initialize default settings if they don't exist."""
+    from app.database import SessionLocal
+    db = SessionLocal()
+    try:
+        backup_retention = db.query(Setting).filter(Setting.key == "backup_retention_count").first()
+        if not backup_retention:
+            backup_retention = Setting(
+                key="backup_retention_count",
+                value="7",
+                description="Number of database backups to keep"
+            )
+            db.add(backup_retention)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error initializing default settings: {e}")
+    finally:
+        db.close()
+
 @app.on_event("startup")
 def startup_event():
     init_db()
     initialize_predefined_data()
+    initialize_default_settings()
     start_scheduler()
     from app.routes.scheduled_tasks import load_scheduled_tasks
     load_scheduled_tasks()
