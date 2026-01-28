@@ -1,0 +1,68 @@
+"""
+Example: Recreate table to modify column constraints
+
+This is a template showing how to recreate a table (needed for SQLite
+when you want to drop a column, change a type, or modify constraints).
+Rename this file (remove .example) and modify to use.
+"""
+
+MIGRATION_ID = "2026_01_28_recreate_example_table"
+
+
+def upgrade(conn, column_exists, table_exists):
+    """
+    Recreate employees table to make position_id nullable.
+
+    SQLite doesn't support ALTER COLUMN, so we need to:
+    1. Create new table with updated schema
+    2. Copy data from old table
+    3. Drop old table
+    4. Rename new table
+
+    This migration demonstrates:
+    - Checking if change is needed
+    - Preserving all existing data
+    - Handling table recreation safely
+    """
+    cursor = conn.cursor()
+
+    # Check if we need to recreate the table
+    cursor.execute("""
+        SELECT sql FROM sqlite_master
+        WHERE type='table' AND name='employees'
+    """)
+    result = cursor.fetchone()
+
+    if result and 'position_id INTEGER NOT NULL' in result[0]:
+        print("  ✓ Recreating employees table to make position_id nullable")
+
+        # Create new table with updated schema
+        cursor.execute("""
+            CREATE TABLE employees_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                first_name TEXT,
+                last_name TEXT,
+                slug TEXT NOT NULL UNIQUE,
+                is_active BOOLEAN DEFAULT 1,
+                position_id INTEGER,  -- Changed: now nullable
+                scheduled_days TEXT,
+                FOREIGN KEY (position_id) REFERENCES positions(id)
+            )
+        """)
+
+        # Copy all data from old table
+        cursor.execute("""
+            INSERT INTO employees_new
+            SELECT id, name, first_name, last_name, slug,
+                   is_active, position_id, scheduled_days
+            FROM employees
+        """)
+
+        # Replace old table with new table
+        cursor.execute("DROP TABLE employees")
+        cursor.execute("ALTER TABLE employees_new RENAME TO employees")
+
+        print("  ✓ Table recreated successfully")
+    else:
+        print("  ℹ️  position_id is already nullable, skipping")

@@ -1,0 +1,43 @@
+"""
+Example: Data migration with defensive checks
+
+This is a template showing how to migrate or update data safely.
+Rename this file (remove .example) and modify to use.
+"""
+
+MIGRATION_ID = "2026_01_28_example_data_migration"
+
+
+def upgrade(conn, column_exists, table_exists):
+    """
+    Migrate data from old format to new format.
+
+    This migration demonstrates:
+    - Adding columns for new data
+    - Populating from existing data
+    - Handling NULL values safely
+    - Using defensive checks at each step
+    """
+    cursor = conn.cursor()
+
+    # Step 1: Add new column if needed
+    if not column_exists('employees', 'full_name'):
+        cursor.execute("""
+            ALTER TABLE employees
+            ADD COLUMN full_name TEXT
+        """)
+        print("  ✓ Added full_name column")
+
+        # Step 2: Populate the new column from existing data
+        cursor.execute("""
+            UPDATE employees
+            SET full_name = first_name || ' ' || last_name
+            WHERE first_name IS NOT NULL
+              AND last_name IS NOT NULL
+              AND full_name IS NULL
+        """)
+
+        rows_updated = cursor.rowcount
+        print(f"  ✓ Populated full_name for {rows_updated} employee(s)")
+    else:
+        print("  ℹ️  full_name column already exists, skipping")

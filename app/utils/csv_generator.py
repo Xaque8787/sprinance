@@ -496,41 +496,92 @@ def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date
                         if req.field_name not in all_tip_requirements:
                             all_tip_requirements[req.field_name] = req
 
+        # Payroll Summary Section - Aggregate across all positions
+        writer.writerow(["PAYROLL SUMMARY"])
+        writer.writerow([])
+
+        has_payroll_data = False
         for pos_name, pos_data in entries_by_position.items():
             position = pos_data["position"]
             pos_entries = pos_data["entries"]
-
-            writer.writerow([f"Position: {pos_name}"])
-            writer.writerow([])
 
             if position.tip_requirements:
                 payroll_reqs = [req for req in position.tip_requirements if req.include_in_payroll_summary]
 
                 if payroll_reqs:
-                    writer.writerow(["PAYROLL SUMMARY"])
-                    writer.writerow([])
-
+                    has_payroll_data = True
+                    writer.writerow([f"{pos_name}"])
                     for req in payroll_reqs:
                         total = 0
                         for entry in pos_entries:
                             if entry.tip_values:
                                 total += entry.tip_values.get(req.field_name, 0)
                         writer.writerow([req.name, f"${total:.2f}"])
-
                     writer.writerow([])
 
-                writer.writerow(["Summary"])
-                writer.writerow([])
+        if not has_payroll_data:
+            writer.writerow(["No payroll summary data available"])
+            writer.writerow([])
+
+        writer.writerow([])
+
+        # Employee Summary Section - Show each position separately
+        writer.writerow(["EMPLOYEE SUMMARY"])
+        writer.writerow([])
+
+        # Build summary data for each position
+        summary_data = []
+        all_reqs_map = {}
+
+        for pos_name, pos_data in entries_by_position.items():
+            position = pos_data["position"]
+            pos_entries = pos_data["entries"]
+
+            if position.tip_requirements:
+                emp_summary = {
+                    "employee": employee.display_name,
+                    "position": pos_name
+                }
 
                 for req in position.tip_requirements:
+                    if req.field_name not in all_reqs_map:
+                        all_reqs_map[req.field_name] = req.name
+
                     total = sum(entry.get_tip_value(req.field_name, 0) for entry in pos_entries)
-                    writer.writerow([f"Total {req.name}", f"${total:.2f}"])
+                    emp_summary[req.field_name] = total
 
-                writer.writerow(["Number of Shifts", str(len(pos_entries))])
-                writer.writerow([])
+                emp_summary["num_shifts"] = len(pos_entries)
+                summary_data.append(emp_summary)
 
-                writer.writerow(["Daily Breakdown"])
-                writer.writerow([])
+        if summary_data:
+            header_row = ["Employee Name", "Position"]
+            for field_name in all_reqs_map.keys():
+                header_row.append(all_reqs_map[field_name])
+            header_row.append("Number of Shifts")
+            writer.writerow(header_row)
+
+            for emp_summary in summary_data:
+                row = [emp_summary["employee"], emp_summary["position"]]
+                for field_name in all_reqs_map.keys():
+                    value = emp_summary.get(field_name, 0)
+                    row.append(f"${value:.2f}")
+                row.append(str(emp_summary["num_shifts"]))
+                writer.writerow(row)
+        else:
+            writer.writerow(["No summary data available"])
+
+        writer.writerow([])
+
+        # Detailed Daily Breakdown - Separate table for each position
+        writer.writerow(["Detailed Daily Breakdown by Employee"])
+        writer.writerow([])
+
+        for pos_name, pos_data in entries_by_position.items():
+            position = pos_data["position"]
+            pos_entries = pos_data["entries"]
+
+            if position.tip_requirements:
+                writer.writerow([f"Employee: {employee.display_name} - {pos_name}"])
 
                 header_row = ["Date", "Day"]
                 for req in position.tip_requirements:

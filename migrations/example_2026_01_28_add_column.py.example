@@ -1,0 +1,30 @@
+"""
+Example: Add a new column to an existing table
+
+This is a template showing how to add a column with defensive checks.
+Rename this file (remove .example) and modify to use.
+"""
+
+MIGRATION_ID = "2026_01_28_add_example_column"
+
+
+def upgrade(conn, column_exists, table_exists):
+    """
+    Add example_field column to some_table.
+
+    This migration demonstrates:
+    - Checking if column exists before adding
+    - Using proper SQLite syntax
+    - Adding a column with a default value
+    """
+    cursor = conn.cursor()
+
+    # Defensive check: only add if column doesn't exist
+    if not column_exists('some_table', 'example_field'):
+        cursor.execute("""
+            ALTER TABLE some_table
+            ADD COLUMN example_field TEXT DEFAULT 'default_value'
+        """)
+        print("  ✓ Added example_field column to some_table")
+    else:
+        print("  ℹ️  example_field column already exists, skipping")

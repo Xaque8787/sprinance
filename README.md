@@ -381,27 +381,47 @@ The SQLite database is stored at: `data/database.db`
 
 ### Migrations
 
-The application includes an automated migration system:
+The application uses a **database-backed migration system** that tracks applied migrations in the database (not the filesystem).
 
-1. **Creating a Migration:**
-   - Create file in `migrations/` directory
-   - Format: `YYYYMMDD_description.py`
-   - Include `upgrade(conn)` function
+**Key features:**
+- Migrations tracked in `schema_migrations` table
+- Migration files are immutable (never moved or deleted)
+- Idempotent and safe to run repeatedly
+- Automatic on container startup
+
+**Creating a Migration:**
+
+1. Create file in `migrations/` directory with format: `YYYY_MM_DD_description.py`
+
+2. Define `MIGRATION_ID` and `upgrade()` function:
 
 ```python
-def upgrade(conn):
+MIGRATION_ID = "2026_01_28_add_email_field"
+
+def upgrade(conn, column_exists, table_exists):
     cursor = conn.cursor()
-    cursor.execute("ALTER TABLE users ADD COLUMN new_field TEXT")
-    conn.commit()
+
+    # Defensive check before making changes
+    if not column_exists('users', 'email'):
+        cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
+        print("  ✓ Added email column")
+    else:
+        print("  ℹ️  email column already exists, skipping")
 ```
 
-2. **Running Migrations:**
-   - Automatic on Docker container startup
-   - Manual: `python run_migrations.py`
+**Running Migrations:**
+- Automatic: On Docker container startup
+- Manual: `python run_migrations.py`
 
-3. **Migration Archive:**
-   - Completed migrations move to `migrations/old/`
-   - Prevents re-execution
+**Check Migration Status:**
+```sql
+SELECT * FROM schema_migrations ORDER BY id;
+```
+
+**Documentation:**
+- See `migrations/README.md` for detailed migration guide
+- See `MIGRATION_SYSTEM.md` for system architecture and best practices
+- See `migrations/example_*.py.example` for templates
 
 ### Backup and Reset
 

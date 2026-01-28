@@ -227,3 +227,13 @@ class TaskExecution(Base):
     result_data = Column(Text, nullable=True)
 
     task = relationship("ScheduledTask", back_populates="executions")
+
+class Setting(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, nullable=False, index=True)
+    value = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, nullable=True)

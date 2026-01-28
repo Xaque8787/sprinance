@@ -30,6 +30,8 @@
         <h2>Payroll Summary</h2>
         <div class="table-wrapper">
             {% if report_data.is_employee_specific %}
+            {% for payroll_entry in report_data.payroll_summary %}
+            <h3 style="margin: 1rem 0 0.5rem 0; padding: 0.5rem 1rem; background: #e3f2fd; border-radius: 4px;">{{ payroll_entry.position }}</h3>
             <table class="summary-table">
                 <thead>
                     <tr>
@@ -38,16 +40,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for employee in report_data.payroll_summary %}
-                        {% for field in employee.fields %}
-                        <tr>
-                            <td class="employee-name">{{ field.name }}</td>
-                            <td class="amount">{{ field.value }}</td>
-                        </tr>
-                        {% endfor %}
+                    {% for field in payroll_entry.fields %}
+                    <tr>
+                        <td class="employee-name">{{ field.name }}</td>
+                        <td class="amount">{{ field.value }}</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% endfor %}
             {% else %}
             <table class="summary-table">
                 <thead>
@@ -82,26 +83,6 @@
     <div class="report-section">
         <h2>Employee Summary</h2>
         <div class="table-wrapper">
-            {% if report_data.is_employee_specific %}
-            <table class="summary-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for employee in report_data.summary %}
-                        {% for field in employee.fields %}
-                        <tr>
-                            <td class="employee-name">{{ field.name }}</td>
-                            <td class="amount">{{ field.value }}</td>
-                        </tr>
-                        {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
             <table class="summary-table">
                 <thead>
                     <tr>
@@ -126,7 +107,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% endif %}
         </div>
     </div>
     {% else %}

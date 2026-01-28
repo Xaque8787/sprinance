@@ -1,0 +1,36 @@
+"""
+Example: Create a new table
+
+This is a template showing how to create a table with defensive checks.
+Rename this file (remove .example) and modify to use.
+"""
+
+MIGRATION_ID = "2026_01_28_create_example_table"
+
+
+def upgrade(conn, column_exists, table_exists):
+    """
+    Create example_table with appropriate columns and constraints.
+
+    This migration demonstrates:
+    - Checking if table exists before creating
+    - Defining columns with proper types and constraints
+    - Setting up foreign keys
+    """
+    cursor = conn.cursor()
+
+    # Defensive check: only create if table doesn't exist
+    if not table_exists('example_table'):
+        cursor.execute("""
+            CREATE TABLE example_table (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                user_id INTEGER,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        print("  ✓ Created example_table")
+    else:
+        print("  ℹ️  example_table already exists, skipping")

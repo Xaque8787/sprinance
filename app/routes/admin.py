@@ -3,10 +3,10 @@ from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User
+from app.models import User, Setting
 from app.auth.jwt_handler import get_current_admin_user, get_password_hash
 from app.utils.slugify import create_slug, ensure_unique_slug
-from app.utils.backup import create_backup, list_backups, delete_backup, get_backup_path, restore_backup
+from app.utils.backup import create_backup, list_backups, delete_backup, get_backup_path, restore_backup, get_backup_retention_count, cleanup_old_backups
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -19,9 +19,16 @@ async def admin_page(
 ):
     users = db.query(User).all()
     backups = list_backups()
+    backup_retention_count = get_backup_retention_count()
     return templates.TemplateResponse(
         "admin/users.html",
-        {"request": request, "users": users, "backups": backups, "current_user": current_user}
+        {
+            "request": request,
+            "users": users,
+            "backups": backups,
+            "backup_retention_count": backup_retention_count,
+            "current_user": current_user
+        }
     )
 
 @router.get("/admin/users/new", response_class=HTMLResponse)
@@ -178,5 +185,37 @@ async def restore_database_backup(
         return RedirectResponse(url="/admin?restored=true", status_code=302)
     except (ValueError, FileNotFoundError) as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/admin/settings/backup-retention")
+async def update_backup_retention(
+    retention_count: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    try:
+        if retention_count < 1:
+            raise HTTPException(status_code=400, detail="Retention count must be at least 1")
+
+        setting = db.query(Setting).filter(Setting.key == "backup_retention_count").first()
+
+        if setting:
+            setting.value = str(retention_count)
+        else:
+            setting = Setting(
+                key="backup_retention_count",
+                value=str(retention_count),
+                description="Number of database backups to keep"
+            )
+            db.add(setting)
+
+        db.commit()
+
+        cleanup_old_backups(retention_count)
+
+        return RedirectResponse(url="/admin?settings_updated=true", status_code=302)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -139,82 +139,131 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
             if row and len(row) > 1 and row[0] == "Date Range":
                 report_data['date_range'] = row[1]
             elif row and len(row) > 0 and row[0] == "PAYROLL SUMMARY":
-                # Parse payroll summary for individual employee report
-                payroll_fields = []
-                for j in range(i + 2, len(rows)):
-                    if not rows[j] or len(rows[j]) < 2:
+                # Parse payroll summary for individual employee report (new format)
+                j = i + 2
+                while j < len(rows):
+                    if not rows[j] or len(rows[j]) == 0 or not rows[j][0].strip():
+                        j += 1
+                        continue
+                    if rows[j][0] in ['EMPLOYEE SUMMARY', 'Detailed Daily Breakdown by Employee']:
                         break
-                    if rows[j][0] in ['Summary', 'Daily Breakdown', '']:
-                        break
-                    key = rows[j][0].strip()
-                    value = rows[j][1].strip()
-                    if key:
-                        payroll_fields.append({
-                            'name': key,
-                            'value': value
+
+                    # This is a position header
+                    position_name = rows[j][0].strip()
+                    j += 1
+                    payroll_fields = []
+
+                    # Read the fields for this position
+                    while j < len(rows) and rows[j] and len(rows[j]) >= 2:
+                        if not rows[j][0].strip():
+                            break
+                        if rows[j][0] in ['EMPLOYEE SUMMARY', 'Detailed Daily Breakdown by Employee']:
+                            break
+
+                        key = rows[j][0].strip()
+                        value = rows[j][1].strip()
+
+                        # Check if this is another position header (no $ sign in value)
+                        if value and not value.startswith('$'):
+                            # This is a new position section
+                            break
+
+                        if key and value:
+                            payroll_fields.append({
+                                'name': key,
+                                'value': value
+                            })
+                        j += 1
+
+                    if payroll_fields:
+                        report_data['payroll_summary'].append({
+                            'employee_name': employee_name,
+                            'position': position_name,
+                            'fields': payroll_fields
                         })
 
-                if payroll_fields:
-                    report_data['payroll_summary'].append({
-                        'employee_name': employee_name,
-                        'position': employee_position,
-                        'fields': payroll_fields
-                    })
-            elif row and len(row) > 0 and row[0] == "Summary":
-                summary_fields = []
-                for j in range(i + 2, len(rows)):
-                    if not rows[j] or len(rows[j]) < 2:
-                        break
-                    if rows[j][0] in ['Daily Breakdown', '']:
-                        break
-                    key = rows[j][0].strip()
-                    value = rows[j][1].strip()
-                    if key:
-                        summary_fields.append({
-                            'name': key,
-                            'value': value
-                        })
-
-                if summary_fields:
-                    report_data['summary'].append({
-                        'employee_name': employee_name,
-                        'position': employee_position,
-                        'fields': summary_fields
-                    })
-
-        for i, row in enumerate(rows):
-            if row and len(row) > 0 and row[0] == "Daily Breakdown":
-                headers = []
+            elif row and len(row) > 0 and row[0] == "EMPLOYEE SUMMARY":
+                # Parse employee summary table (new format)
                 header_idx = i + 2
-                if header_idx < len(rows) and rows[header_idx] and rows[header_idx][0] == "Date":
-                    headers = rows[header_idx]
-                    entries = []
+                if header_idx < len(rows) and rows[header_idx] and rows[header_idx][0] == "Employee Name":
+                    summary_headers = rows[header_idx]
                     for j in range(header_idx + 1, len(rows)):
-                        if not rows[j] or len(rows[j]) < 2:
+                        if not rows[j] or len(rows[j]) == 0:
                             break
-                        if rows[j][0] == "TOTAL":
+                        if rows[j][0] == '' or 'Detailed' in str(rows[j][0]):
                             break
+                        if len(rows[j]) >= 2 and rows[j][0].strip():
+                            summary_entry = {
+                                'employee_name': rows[j][0].strip(),
+                                'position': rows[j][1].strip() if len(rows[j]) > 1 else '',
+                                'fields': []
+                            }
 
-                        entry = {
-                            'date': rows[j][0].strip(),
-                            'day': rows[j][1].strip() if len(rows[j]) > 1 else '',
-                            'fields': []
-                        }
+                            for k in range(2, len(summary_headers)):
+                                if k < len(rows[j]):
+                                    summary_entry['fields'].append({
+                                        'name': summary_headers[k].strip(),
+                                        'value': rows[j][k].strip()
+                                    })
 
-                        for k in range(2, len(headers)):
-                            if k < len(rows[j]):
-                                entry['fields'].append({
-                                    'name': headers[k].strip(),
-                                    'value': rows[j][k].strip()
-                                })
+                            report_data['summary'].append(summary_entry)
 
-                        entries.append(entry)
+        # Parse detailed breakdown section
+        for i, row in enumerate(rows):
+            if row and len(row) > 0 and "Detailed Daily Breakdown" in str(row[0]):
+                current_employee = None
+                current_entries = []
+                detail_headers = []
 
-                    if entries:
-                        report_data['details'].append({
-                            'employee': f"{employee_name} - {employee_position}",
-                            'entries': entries
-                        })
+                for j in range(i + 2, len(rows)):
+                    current_row = rows[j]
+                    if not current_row or len(current_row) == 0 or not current_row[0]:
+                        if current_employee and current_entries:
+                            report_data['details'].append({
+                                'employee': current_employee,
+                                'entries': current_entries
+                            })
+                            current_employee = None
+                            current_entries = []
+                        continue
+
+                    cell_value = str(current_row[0]).strip()
+
+                    if cell_value.startswith('Employee:'):
+                        if current_employee and current_entries:
+                            report_data['details'].append({
+                                'employee': current_employee,
+                                'entries': current_entries
+                            })
+                        current_employee = cell_value.replace('Employee: ', '')
+                        current_entries = []
+                    elif cell_value == 'Date':
+                        detail_headers = current_row
+                        continue
+                    elif cell_value == 'TOTAL':
+                        continue
+                    elif current_employee and cell_value:
+                        if len(current_row) >= 2:
+                            entry = {
+                                'date': current_row[0].strip(),
+                                'day': current_row[1].strip() if len(current_row) > 1 else '',
+                                'fields': []
+                            }
+
+                            for k in range(2, len(detail_headers)):
+                                if k < len(current_row):
+                                    entry['fields'].append({
+                                        'name': detail_headers[k].strip(),
+                                        'value': current_row[k].strip()
+                                    })
+
+                            current_entries.append(entry)
+
+                if current_employee and current_entries:
+                    report_data['details'].append({
+                        'employee': current_employee,
+                        'entries': current_entries
+                    })
                 break
 
         return report_data

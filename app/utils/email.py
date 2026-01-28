@@ -125,6 +125,8 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
 
         if report_data.get('is_employee_specific'):
             for payroll_entry in report_data['payroll_summary']:
+                position_name = payroll_entry.get('position', 'Position')
+                html += f'<h3>{position_name}</h3>'
                 html += '<table class="summary-table"><tbody>'
                 for field in payroll_entry.get('fields', []):
                     html += f'<tr><td><strong>{field.get("name", "")}</strong></td><td>{field.get("value", "")}</td></tr>'

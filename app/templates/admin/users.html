@@ -9,6 +9,10 @@ if (urlParams.get('restored') === 'true') {
     alert('✅ Database restored successfully!\n\nThe database has been replaced with the backup. The page will reload now.');
     window.location.href = '/admin';
 }
+if (urlParams.get('settings_updated') === 'true') {
+    alert('✅ Settings updated successfully!');
+    window.location.href = '/admin';
+}
 </script>
 
 <div class="page-header">
@@ -44,6 +48,23 @@ if (urlParams.get('restored') === 'true') {
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<div class="page-header" style="margin-top: 3rem;">
+    <h2>Backup Settings</h2>
+</div>
+
+<div class="settings-container">
+    <div class="setting-item">
+        <div class="setting-info">
+            <h3>Backup Retention</h3>
+            <p>Number of database backups to keep. Older backups will be automatically deleted.</p>
+        </div>
+        <form method="POST" action="/admin/settings/backup-retention" class="setting-form">
+            <input type="number" name="retention_count" value="{{ backup_retention_count }}" min="1" max="100" class="form-control" style="width: 100px;">
+            <button type="submit" class="btn btn-primary">Update</button>
+        </form>
+    </div>
 </div>
 
 <div class="page-header" style="margin-top: 3rem;">
@@ -87,4 +108,49 @@ if (urlParams.get('restored') === 'true') {
     <p>No backups available. Create your first backup above.</p>
     {% endif %}
 </div>
+
+<style>
+.settings-container {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 0;
+}
+
+.setting-info h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: #2c3e50;
+}
+
+.setting-info p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.setting-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.setting-form .form-control {
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.setting-form .btn {
+    padding: 0.5rem 1rem;
+}
+</style>
 {% endblock %}

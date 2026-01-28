@@ -1,9 +1,62 @@
 import os
 import shutil
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Optional
 import sqlite3
 from app.database import DATABASE_PATH
+
+
+def get_backup_retention_count() -> int:
+    """Get the backup retention count from settings."""
+    try:
+        conn = sqlite3.connect(DATABASE_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'backup_retention_count'")
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            return int(result[0])
+        return 7
+    except Exception:
+        return 7
+
+
+def cleanup_old_backups(retention_count: Optional[int] = None) -> int:
+    """
+    Remove old backups beyond the retention count.
+    Returns the number of backups deleted.
+    """
+    if retention_count is None:
+        retention_count = get_backup_retention_count()
+
+    backups_dir = "data/backups"
+    if not os.path.exists(backups_dir):
+        return 0
+
+    backups = []
+    for filename in os.listdir(backups_dir):
+        if filename.endswith('.db'):
+            filepath = os.path.join(backups_dir, filename)
+            stat = os.stat(filepath)
+            backups.append({
+                'filename': filename,
+                'filepath': filepath,
+                'created_at': datetime.fromtimestamp(stat.st_mtime)
+            })
+
+    backups.sort(key=lambda x: x['created_at'], reverse=True)
+
+    deleted_count = 0
+    if len(backups) > retention_count:
+        for backup in backups[retention_count:]:
+            try:
+                os.remove(backup['filepath'])
+                deleted_count += 1
+            except Exception:
+                pass
+
+    return deleted_count
 
 
 def create_backup() -> str:
@@ -38,6 +91,8 @@ def create_backup() -> str:
             os.remove(filepath)
             raise Exception("Backup file is empty")
 
+        cleanup_old_backups()
+
         return filename
 
     except Exception as e:
@@ -71,7 +126,7 @@ def list_backups() -> List[Dict[str, any]]:
 
     backups.sort(key=lambda x: x['created_at'], reverse=True)
 
-    return backups[:7]
+    return backups
 
 
 def delete_backup(filename: str) -> bool:
