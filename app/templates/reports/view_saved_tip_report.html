@@ -83,26 +83,6 @@
     <div class="report-section">
         <h2>Employee Summary</h2>
         <div class="table-wrapper">
-            {% if report_data.is_employee_specific %}
-            <table class="summary-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for employee in report_data.summary %}
-                        {% for field in employee.fields %}
-                        <tr>
-                            <td class="employee-name">{{ field.name }}</td>
-                            <td class="amount">{{ field.value }}</td>
-                        </tr>
-                        {% endfor %}
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
             <table class="summary-table">
                 <thead>
                     <tr>
@@ -127,7 +107,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% endif %}
         </div>
     </div>
     {% else %}
