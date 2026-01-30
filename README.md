@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="app/static/images/icon-1024.png" alt="Daily Dough Logo" width="128" height="128">
+  <img src="app/static/images/icon-1024.png" alt="Daily Dough Logo" width="768" height="768">
 
   # Daily Dough
 
