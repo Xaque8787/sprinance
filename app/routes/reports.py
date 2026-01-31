@@ -21,6 +21,15 @@ def validate_email(email: str) -> bool:
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+def format_decimal(value, decimals=2):
+    """Format a number to a fixed number of decimal places."""
+    try:
+        return f"{float(value):.{decimals}f}"
+    except (ValueError, TypeError):
+        return value
+
+templates.env.filters["format_decimal"] = format_decimal
+
 @router.get("/reports")
 async def reports_index(
     request: Request,
