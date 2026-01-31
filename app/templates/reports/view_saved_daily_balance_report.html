@@ -28,6 +28,36 @@
         </a>
     </div>
 
+    {% if report_data.checks_efts_summary %}
+    <div class="daily-report-section">
+        <h2>Checks & EFT Summary</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Number/Card</th>
+                    <th>Payable To</th>
+                    <th class="text-right">Total</th>
+                    <th>Memo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in report_data.checks_efts_summary %}
+                <tr>
+                    <td>{{ item.type }}</td>
+                    <td>{{ item.date }}</td>
+                    <td>{{ item.number }}</td>
+                    <td>{{ item.payable_to }}</td>
+                    <td class="text-right">{{ item.total }}</td>
+                    <td>{{ item.memo }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
     {% for daily_report in report_data.daily_reports %}
     <div class="daily-report-section">
         <div class="report-date-header">
@@ -107,8 +137,8 @@
                     <table class="checks-eft-table">
                         <thead>
                             <tr>
-                                <th>Check Number</th>
                                 <th>Date</th>
+                                <th>Check Number</th>
                                 <th>Payable To</th>
                                 <th>Total</th>
                                 <th>Memo</th>
@@ -117,8 +147,8 @@
                         <tbody>
                             {% for check in daily_report.checks %}
                             <tr>
-                                <td>{{ check.check_number }}</td>
                                 <td>{{ check.date }}</td>
+                                <td>{{ check.check_number }}</td>
                                 <td>{{ check.payable_to }}</td>
                                 <td class="amount">{{ check.total }}</td>
                                 <td>{{ check.memo }}</td>

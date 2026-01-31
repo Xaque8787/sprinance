@@ -466,11 +466,11 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
 
                 if daily_balance.checks:
                     writer.writerow(["Checks"])
-                    writer.writerow(["Check Number", "Date", "Payable To", "Total", "Memo"])
+                    writer.writerow(["Date", "Check Number", "Payable To", "Total", "Memo"])
                     for check in daily_balance.checks:
                         writer.writerow([
-                            check.check_number or "N/A",
                             check.date,
+                            check.check_number or "N/A",
                             check.payable_to,
                             f"${check.total:.2f}",
                             check.memo or ""

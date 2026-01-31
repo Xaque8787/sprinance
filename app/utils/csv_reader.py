@@ -464,10 +464,14 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
                 })
                 i += 1
 
-            # Skip empty rows
+            # Skip empty rows and update row variable
             while i < len(rows) and (not rows[i] or len(rows[i]) == 0 or rows[i][0] == ''):
                 i += 1
-            continue
+            # Don't continue, fall through to check for daily reports
+            if i < len(rows):
+                row = rows[i]
+            else:
+                break
 
         if row and len(row) > 0 and row[0].startswith('Date: '):
             date_parts = row[0].replace('Date: ', '').split(' - ')
