@@ -28,6 +28,36 @@
         </a>
     </div>
 
+    {% if report_data.checks_efts_summary %}
+    <div class="daily-report-section">
+        <h2>Checks & EFT Summary</h2>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Number/Card</th>
+                    <th>Payable To</th>
+                    <th class="text-right">Total</th>
+                    <th>Memo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in report_data.checks_efts_summary %}
+                <tr>
+                    <td>{{ item.type }}</td>
+                    <td>{{ item.date }}</td>
+                    <td>{{ item.number }}</td>
+                    <td>{{ item.payable_to }}</td>
+                    <td class="text-right">{{ item.total }}</td>
+                    <td>{{ item.memo }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
     {% for daily_report in report_data.daily_reports %}
     <div class="daily-report-section">
         <div class="report-date-header">
@@ -95,6 +125,72 @@
         <div class="cash-over-under">
             <strong>Cash Over/Under:</strong> <span class="amount">{{ daily_report.cash_over_under }}</span>
         </div>
+
+        {% if daily_report.checks or daily_report.efts %}
+        <div class="checks-eft-section">
+            <h3>Checks & EFT</h3>
+
+            {% if daily_report.checks %}
+            <div class="checks-subsection">
+                <h4>Checks</h4>
+                <div class="table-wrapper">
+                    <table class="checks-eft-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Check Number</th>
+                                <th>Payable To</th>
+                                <th>Total</th>
+                                <th>Memo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for check in daily_report.checks %}
+                            <tr>
+                                <td>{{ check.date }}</td>
+                                <td>{{ check.check_number }}</td>
+                                <td>{{ check.payable_to }}</td>
+                                <td class="amount">{{ check.total }}</td>
+                                <td>{{ check.memo }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if daily_report.efts %}
+            <div class="efts-subsection">
+                <h4>EFT Transactions</h4>
+                <div class="table-wrapper">
+                    <table class="checks-eft-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Card Number</th>
+                                <th>Payable To</th>
+                                <th>Total</th>
+                                <th>Memo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for eft in daily_report.efts %}
+                            <tr>
+                                <td>{{ eft.date }}</td>
+                                <td>{{ eft.card_number }}</td>
+                                <td>{{ eft.payable_to }}</td>
+                                <td class="amount">{{ eft.total }}</td>
+                                <td>{{ eft.memo }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
 
         {% if daily_report.employees %}
         <div class="employee-section">
@@ -325,6 +421,57 @@
 .employee-table .amount-left {
     text-align: left;
     font-family: 'Courier New', monospace;
+}
+
+.checks-eft-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 2rem 0;
+}
+
+.checks-eft-section h3 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: #2c3e50;
+}
+
+.checks-subsection, .efts-subsection {
+    margin-bottom: 1.5rem;
+}
+
+.checks-subsection:last-child, .efts-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.checks-subsection h4, .efts-subsection h4 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: #495057;
+    font-size: 1rem;
+}
+
+.checks-eft-table {
+    width: 100%;
+    background: white;
+    border-collapse: collapse;
+}
+
+.checks-eft-table th {
+    background: #e9ecef;
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.checks-eft-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.checks-eft-table tbody tr:hover {
+    background: #f8f9fa;
 }
 
 @media (max-width: 768px) {

@@ -113,6 +113,8 @@ class DailyBalance(Base):
 
     employee_entries = relationship("DailyEmployeeEntry", back_populates="daily_balance", cascade="all, delete-orphan")
     financial_line_items = relationship("DailyFinancialLineItem", back_populates="daily_balance", cascade="all, delete-orphan")
+    checks = relationship("DailyBalanceCheck", back_populates="daily_balance", cascade="all, delete-orphan")
+    efts = relationship("DailyBalanceEFT", back_populates="daily_balance", cascade="all, delete-orphan")
     created_by_user = relationship("User", foreign_keys=[created_by_user_id])
     edited_by_user = relationship("User", foreign_keys=[edited_by_user_id])
 
@@ -237,3 +239,74 @@ class Setting(Base):
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=True)
+
+class CheckPayee(Base):
+    __tablename__ = "check_payees"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    created_at = Column(String, nullable=True)
+
+class EFTCardNumber(Base):
+    __tablename__ = "eft_card_numbers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    number = Column(String, unique=True, nullable=False)
+    created_at = Column(String, nullable=True)
+
+class EFTPayee(Base):
+    __tablename__ = "eft_payees"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    created_at = Column(String, nullable=True)
+
+class DailyBalanceCheck(Base):
+    __tablename__ = "daily_balance_checks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    daily_balance_id = Column(Integer, ForeignKey("daily_balance.id"), nullable=False)
+    check_number = Column(String, nullable=True)
+    date = Column(String, nullable=False)
+    payable_to = Column(String, nullable=False)
+    total = Column(Float, nullable=False)
+    memo = Column(Text, nullable=True)
+
+    daily_balance = relationship("DailyBalance", back_populates="checks")
+
+class DailyBalanceEFT(Base):
+    __tablename__ = "daily_balance_efts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    daily_balance_id = Column(Integer, ForeignKey("daily_balance.id"), nullable=False)
+    date = Column(String, nullable=False)
+    card_number = Column(String, nullable=True)
+    payable_to = Column(String, nullable=False)
+    total = Column(Float, nullable=False)
+    memo = Column(Text, nullable=True)
+
+    daily_balance = relationship("DailyBalance", back_populates="efts")
+
+class ScheduledCheck(Base):
+    __tablename__ = "scheduled_checks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    check_number = Column(String, nullable=True)
+    payable_to = Column(String, nullable=False)
+    default_total = Column(Float, default=0.0)
+    days_of_week = Column(JSON, default=list)
+    memo = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, nullable=True)
+
+class ScheduledEFT(Base):
+    __tablename__ = "scheduled_efts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    card_number = Column(String, nullable=True)
+    payable_to = Column(String, nullable=False)
+    default_total = Column(Float, default=0.0)
+    days_of_week = Column(JSON, default=list)
+    memo = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, nullable=True)

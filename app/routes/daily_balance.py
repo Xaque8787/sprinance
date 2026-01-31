@@ -7,7 +7,7 @@ from datetime import date as date_cls, datetime
 from typing import List, Optional
 import os
 from app.database import get_db
-from app.models import User, Employee, DailyBalance, DailyEmployeeEntry, FinancialLineItemTemplate, DailyFinancialLineItem, Position, EmployeePositionSchedule
+from app.models import User, Employee, DailyBalance, DailyEmployeeEntry, FinancialLineItemTemplate, DailyFinancialLineItem, Position, EmployeePositionSchedule, DailyBalanceCheck, DailyBalanceEFT, ScheduledCheck, ScheduledEFT
 from app.auth.jwt_handler import get_current_user
 from app.utils.csv_generator import generate_daily_balance_csv
 
@@ -193,6 +193,72 @@ def save_daily_balance_data(
         )
         db.add(entry)
 
+    for check in daily_balance.checks:
+        db.delete(check)
+    db.flush()
+
+    check_indices = []
+    for key in form_data.keys():
+        if key.startswith("check_number_"):
+            index = key.split("_")[-1]
+            check_indices.append(index)
+
+    for index in check_indices:
+        check_number = form_data.get(f"check_number_{index}", "").strip()
+        check_date = form_data.get(f"check_date_{index}", "").strip()
+        check_payable_to = form_data.get(f"check_payable_to_{index}", "").strip()
+        check_total_str = form_data.get(f"check_total_{index}", "").strip()
+        check_memo = form_data.get(f"check_memo_{index}", "").strip()
+
+        if check_date and check_payable_to and check_total_str:
+            try:
+                check_total = float(check_total_str)
+            except (ValueError, TypeError):
+                continue
+
+            check = DailyBalanceCheck(
+                daily_balance_id=daily_balance.id,
+                check_number=check_number if check_number else None,
+                date=check_date,
+                payable_to=check_payable_to,
+                total=check_total,
+                memo=check_memo if check_memo else None
+            )
+            db.add(check)
+
+    for eft in daily_balance.efts:
+        db.delete(eft)
+    db.flush()
+
+    eft_indices = []
+    for key in form_data.keys():
+        if key.startswith("eft_date_"):
+            index = key.split("_")[-1]
+            eft_indices.append(index)
+
+    for index in eft_indices:
+        eft_date = form_data.get(f"eft_date_{index}", "").strip()
+        eft_card_number = form_data.get(f"eft_card_number_{index}", "").strip()
+        eft_payable_to = form_data.get(f"eft_payable_to_{index}", "").strip()
+        eft_total_str = form_data.get(f"eft_total_{index}", "").strip()
+        eft_memo = form_data.get(f"eft_memo_{index}", "").strip()
+
+        if eft_date and eft_payable_to and eft_total_str:
+            try:
+                eft_total = float(eft_total_str)
+            except (ValueError, TypeError):
+                continue
+
+            eft = DailyBalanceEFT(
+                daily_balance_id=daily_balance.id,
+                date=eft_date,
+                card_number=eft_card_number if eft_card_number else None,
+                payable_to=eft_payable_to,
+                total=eft_total,
+                memo=eft_memo if eft_memo else None
+            )
+            db.add(eft)
+
     db.commit()
     db.refresh(daily_balance)
 
@@ -311,6 +377,38 @@ async def daily_balance_page(
                     previous_ending_till = item.value
                     break
 
+    existing_checks = []
+    existing_efts = []
+    if daily_balance:
+        existing_checks = daily_balance.checks
+        existing_efts = daily_balance.efts
+    else:
+        scheduled_checks = db.query(ScheduledCheck).filter(ScheduledCheck.is_active == True).all()
+        for scheduled_check in scheduled_checks:
+            days = scheduled_check.days_of_week if scheduled_check.days_of_week else []
+            if day_of_week in days:
+                check_data = type('obj', (object,), {
+                    'date': target_date,
+                    'check_number': scheduled_check.check_number,
+                    'payable_to': scheduled_check.payable_to,
+                    'total': scheduled_check.default_total,
+                    'memo': scheduled_check.memo
+                })
+                existing_checks.append(check_data)
+
+        scheduled_efts = db.query(ScheduledEFT).filter(ScheduledEFT.is_active == True).all()
+        for scheduled_eft in scheduled_efts:
+            days = scheduled_eft.days_of_week if scheduled_eft.days_of_week else []
+            if day_of_week in days:
+                eft_data = type('obj', (object,), {
+                    'date': target_date,
+                    'card_number': scheduled_eft.card_number,
+                    'payable_to': scheduled_eft.payable_to,
+                    'total': scheduled_eft.default_total,
+                    'memo': scheduled_eft.memo
+                })
+                existing_efts.append(eft_data)
+
     return templates.TemplateResponse(
         "daily_balance/form.html",
         {
@@ -327,7 +425,9 @@ async def daily_balance_page(
             "edit_mode": edit,
             "financial_templates": templates_list,
             "financial_line_items": financial_line_items,
-            "previous_ending_till": previous_ending_till
+            "previous_ending_till": previous_ending_till,
+            "existing_checks": existing_checks,
+            "existing_efts": existing_efts
         }
     )
 
@@ -405,6 +505,12 @@ async def save_daily_balance_route(
                         previous_ending_till = item.value
                         break
 
+        existing_checks = []
+        existing_efts = []
+        if daily_balance:
+            existing_checks = daily_balance.checks
+            existing_efts = daily_balance.efts
+
         return templates.TemplateResponse(
             "daily_balance/form.html",
             {
@@ -422,6 +528,8 @@ async def save_daily_balance_route(
                 "financial_templates": templates_list,
                 "financial_line_items": financial_line_items,
                 "previous_ending_till": previous_ending_till,
+                "existing_checks": existing_checks,
+                "existing_efts": existing_efts,
                 "error": e.detail
             }
         )
@@ -501,6 +609,12 @@ async def finalize_daily_balance_route(
                         previous_ending_till = item.value
                         break
 
+        existing_checks = []
+        existing_efts = []
+        if daily_balance:
+            existing_checks = daily_balance.checks
+            existing_efts = daily_balance.efts
+
         return templates.TemplateResponse(
             "daily_balance/form.html",
             {
@@ -518,6 +632,8 @@ async def finalize_daily_balance_route(
                 "financial_templates": templates_list,
                 "financial_line_items": financial_line_items,
                 "previous_ending_till": previous_ending_till,
+                "existing_checks": existing_checks,
+                "existing_efts": existing_efts,
                 "error": e.detail
             }
         )

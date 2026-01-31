@@ -15,6 +15,36 @@ from app.services.scheduler_tasks import run_tip_report_task, run_daily_balance_
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+def sync_next_run_times(db: Session):
+    """
+    Sync the next_run_at field in the database with APScheduler's actual next run time.
+    This ensures the UI always displays the correct next run time.
+    """
+    tasks = db.execute(text("""
+        SELECT id FROM scheduled_tasks WHERE is_active = 1
+    """)).fetchall()
+
+    for task_row in tasks:
+        task_id = task_row[0]
+        job_id = f"task_{task_id}"
+        job = scheduler.get_job(job_id)
+
+        if job and job.next_run_time:
+            apscheduler_next_run = job.next_run_time.isoformat()
+
+            db_next_run = db.execute(text("""
+                SELECT next_run_at FROM scheduled_tasks WHERE id = :task_id
+            """), {"task_id": task_id}).scalar()
+
+            if db_next_run != apscheduler_next_run:
+                db.execute(text("""
+                    UPDATE scheduled_tasks
+                    SET next_run_at = :next_run_at
+                    WHERE id = :task_id
+                """), {"next_run_at": apscheduler_next_run, "task_id": task_id})
+
+    db.commit()
+
 @router.get("/scheduled-tasks")
 async def scheduled_tasks_page(
     request: Request,
@@ -28,6 +58,8 @@ async def scheduled_tasks_page(
     import os
     TIMEZONE = os.getenv('TZ', 'America/Los_Angeles')
     tz = pytz.timezone(TIMEZONE)
+
+    sync_next_run_times(db)
 
     tasks = db.execute(text("""
         SELECT * FROM scheduled_tasks

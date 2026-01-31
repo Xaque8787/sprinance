@@ -6,7 +6,7 @@ from sqlalchemy import text
 from typing import List
 from app.database import get_db
 from app.models import User, Position, TipEntryRequirement, EmployeePositionSchedule
-from app.auth.jwt_handler import get_current_user
+from app.auth.jwt_handler import get_current_admin_user
 from app.utils.slugify import create_slug, ensure_unique_slug
 
 router = APIRouter()
@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="app/templates")
 async def positions_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     positions = db.query(Position).all()
     tip_requirements = db.query(TipEntryRequirement).order_by(TipEntryRequirement.display_order).all()
@@ -34,7 +34,7 @@ async def positions_page(
 async def new_position_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     tip_requirements = db.query(TipEntryRequirement).order_by(TipEntryRequirement.display_order).all()
     return templates.TemplateResponse(
@@ -53,7 +53,7 @@ async def create_position(
     name: str = Form(...),
     tip_requirement_ids: List[int] = Form([]),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     slug = ensure_unique_slug(db, Position, create_slug(name))
 
@@ -80,7 +80,7 @@ async def edit_position_page(
     slug: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     position = db.query(Position).filter(Position.slug == slug).first()
     if not position:
@@ -105,7 +105,7 @@ async def update_position(
     name: str = Form(...),
     tip_requirement_ids: List[int] = Form([]),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     position = db.query(Position).filter(Position.slug == slug).first()
     if not position:
@@ -131,7 +131,7 @@ async def update_position(
 async def delete_position(
     slug: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     position = db.query(Position).filter(Position.slug == slug).first()
     if not position:

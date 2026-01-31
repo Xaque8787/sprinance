@@ -6,7 +6,7 @@ from typing import List, Optional
 import json
 from app.database import get_db
 from app.models import User, Employee, Position, EmployeePositionSchedule
-from app.auth.jwt_handler import get_current_user
+from app.auth.jwt_handler import get_current_admin_user
 from app.utils.slugify import create_slug, ensure_unique_slug
 
 router = APIRouter()
@@ -16,7 +16,7 @@ templates = Jinja2Templates(directory="app/templates")
 async def employees_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     employees = db.query(Employee).all()
     return templates.TemplateResponse(
@@ -28,7 +28,7 @@ async def employees_page(
 async def new_employee_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     positions = db.query(Position).all()
     positions_data = [{"id": p.id, "name": p.name} for p in positions]
@@ -45,7 +45,7 @@ async def create_employee(
     is_active: Optional[str] = Form(None),
     position_schedules: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     schedules_data = json.loads(position_schedules)
 
@@ -81,7 +81,7 @@ async def employee_detail(
     slug: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     employee = db.query(Employee).filter(Employee.slug == slug).first()
     if not employee:
@@ -97,7 +97,7 @@ async def edit_employee_page(
     slug: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     employee = db.query(Employee).filter(Employee.slug == slug).first()
     if not employee:
@@ -134,7 +134,7 @@ async def update_employee(
     is_active: Optional[str] = Form(None),
     position_schedules: str = Form(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     employee = db.query(Employee).filter(Employee.slug == slug).first()
     if not employee:
@@ -171,7 +171,7 @@ async def delete_employee(
     slug: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_admin_user)
 ):
     from app.models import DailyEmployeeEntry, DailyFinancialLineItem, ScheduledTask, Position
 

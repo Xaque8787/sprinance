@@ -23,7 +23,12 @@ async def login_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/", status_code=302)
 
     if not database_exists() or db.query(User).count() == 0:
-        return templates.TemplateResponse("setup.html", {"request": request})
+        version, update_available = check_version()
+        return templates.TemplateResponse("setup.html", {
+            "request": request,
+            "version": version,
+            "update_available": update_available
+        })
 
     version, update_available = check_version()
     return templates.TemplateResponse(

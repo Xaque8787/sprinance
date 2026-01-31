@@ -7,7 +7,7 @@ from datetime import date
 from app.database import init_db, get_db
 from app.models import User, Position, TipEntryRequirement, Setting
 from app.auth.jwt_handler import get_current_user_from_cookie
-from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items, scheduled_tasks
+from app.routes import auth, admin, employees, daily_balance, positions, tip_requirements, reports, financial_items, scheduled_tasks, checks_efts
 from app.utils.slugify import create_slug
 from app.utils.version import check_version
 from app.scheduler import start_scheduler, shutdown_scheduler
@@ -27,6 +27,7 @@ app.include_router(tip_requirements.router)
 app.include_router(reports.router)
 app.include_router(financial_items.router)
 app.include_router(scheduled_tasks.router)
+app.include_router(checks_efts.router)
 
 def initialize_predefined_data():
     # No longer creating hardcoded positions and tip requirements

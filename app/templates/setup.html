@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Initial Setup - Management System</title>
+    <title>Initial Setup - Daily Dough</title>
+    <link rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="login-container">
         <div class="login-box">
-            <h1>Management System</h1>
+            <img src="/static/images/icon-256.png" alt="Daily Dough" class="login-logo">
+            <h1>Daily Dough</h1>
             <h2>Initial Setup</h2>
             <p>Welcome! Create your administrator account to get started.</p>
 
@@ -31,6 +33,13 @@
 
                 <button type="submit" class="btn btn-primary">Create Admin Account</button>
             </form>
+
+            <div class="version-info" style="text-align: center; margin-top: 20px; color: #666;">
+                <span class="version">v{{ version }}</span>
+                {% if update_available %}
+                <span class="update-badge" style="background: #ff9800; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; margin-left: 8px;">Update Available</span>
+                {% endif %}
+            </div>
         </div>
     </div>
 </body>

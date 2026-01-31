@@ -1,0 +1,1107 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Checks & EFT Values{% endblock %}
+
+{% block content %}
+<div class="content-header">
+    <h2>Manage Checks & EFT Values</h2>
+    <p>Create and manage predefined values and scheduled checks/EFTs</p>
+</div>
+
+<div class="tabs-container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('values')">Value Lists</button>
+        <button class="tab-btn" onclick="showTab('scheduled')">Scheduled Checks & EFTs</button>
+    </div>
+</div>
+
+<div id="values-tab" class="tab-content active">
+    <div class="manage-sections">
+        <div class="manage-section">
+            <div class="section-header">
+                <h3>Check Payees</h3>
+                <button type="button" class="btn btn-primary" onclick="showAddModal('check-payee')">+ Add Payee</button>
+            </div>
+            <div class="values-list" id="check-payees-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <div class="manage-section">
+            <div class="section-header">
+                <h3>EFT Card Numbers</h3>
+                <button type="button" class="btn btn-primary" onclick="showAddModal('eft-card')">+ Add Card Number</button>
+            </div>
+            <div class="values-list" id="eft-cards-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <div class="manage-section">
+            <div class="section-header">
+                <h3>EFT Payees</h3>
+                <button type="button" class="btn btn-primary" onclick="showAddModal('eft-payee')">+ Add Payee</button>
+            </div>
+            <div class="values-list" id="eft-payees-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="scheduled-tab" class="tab-content">
+    <div class="scheduled-sections">
+        <div class="scheduled-section">
+            <div class="section-header">
+                <h3>Scheduled Checks</h3>
+                <button type="button" class="btn btn-primary" onclick="showScheduledCheckModal()">+ Add Scheduled Check</button>
+            </div>
+            <div class="scheduled-list" id="scheduled-checks-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <div class="scheduled-section">
+            <div class="section-header">
+                <h3>Scheduled EFTs</h3>
+                <button type="button" class="btn btn-primary" onclick="showScheduledEFTModal()">+ Add Scheduled EFT</button>
+            </div>
+            <div class="scheduled-list" id="scheduled-efts-list">
+                <div class="loading">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-overlay" class="modal-overlay" onclick="closeModal()"></div>
+<div id="modal-container" class="modal-container">
+    <div class="modal-header">
+        <h3 id="modal-title">Add Value</h3>
+        <button type="button" class="btn-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <form id="value-form" onsubmit="return handleSubmit(event)">
+            <input type="hidden" id="value-id">
+            <input type="hidden" id="value-type">
+            <div class="form-group">
+                <label id="value-label">Value</label>
+                <input type="text" id="value-input" class="form-control" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="scheduled-modal-overlay" class="modal-overlay" onclick="closeScheduledModal()"></div>
+<div id="scheduled-modal-container" class="modal-container scheduled-modal">
+    <div class="modal-header">
+        <h3 id="scheduled-modal-title">Add Scheduled Check</h3>
+        <button type="button" class="btn-close" onclick="closeScheduledModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+        <form id="scheduled-form" onsubmit="return handleScheduledSubmit(event)">
+            <input type="hidden" id="scheduled-id">
+            <input type="hidden" id="scheduled-type">
+
+            <div class="form-row-2col">
+                <div class="form-group" id="card-number-group">
+                    <label>Card Number</label>
+                    <input type="text" id="scheduled-card-number" class="form-control" list="card-number-options" autocomplete="off">
+                    <datalist id="card-number-options">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Payable To <span style="color: red;">*</span></label>
+                    <input type="text" id="scheduled-payable-to" class="form-control" list="payable-to-options" required autocomplete="off">
+                    <datalist id="payable-to-options">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>Default Total</label>
+                    <input type="number" step="0.01" id="scheduled-total" class="form-control" value="0.00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Memo</label>
+                <input type="text" id="scheduled-memo" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label>Days of Week <span style="color: red;">*</span></label>
+                <div class="days-checkboxes">
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Monday"> Mon
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Tuesday"> Tue
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Wednesday"> Wed
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Thursday"> Thu
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Friday"> Fri
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Saturday"> Sat
+                    </label>
+                    <label class="day-checkbox">
+                        <input type="checkbox" name="scheduled-days" value="Sunday"> Sun
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="scheduled-active" checked> Active
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeScheduledModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.tabs-container {
+    margin: 2rem 0 1rem;
+}
+
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #6b7280;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tab-btn:hover {
+    color: #374151;
+}
+
+.tab-btn.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.manage-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.scheduled-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.manage-section, .scheduled-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.section-header h3 {
+    margin: 0;
+    color: #1f2937;
+    font-size: 1.25rem;
+}
+
+.values-list, .scheduled-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.value-item, .scheduled-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s;
+}
+
+.scheduled-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.value-item:hover, .scheduled-item:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.value-name {
+    flex: 1;
+    font-weight: 500;
+    color: #374151;
+}
+
+.scheduled-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+
+.scheduled-info {
+    flex: 1;
+}
+
+.scheduled-payee {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 1.05rem;
+}
+
+.scheduled-details {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.scheduled-detail {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.scheduled-days {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.day-badge {
+    padding: 0.125rem 0.5rem;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.inactive-badge {
+    padding: 0.125rem 0.5rem;
+    background: #fee2e2;
+    color: #991b1b;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.value-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    padding: 0.25rem 0.5rem;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.btn-icon.btn-edit:hover {
+    color: #3b82f6;
+}
+
+.btn-icon.btn-delete:hover {
+    color: #ef4444;
+}
+
+.loading {
+    text-align: center;
+    color: #9ca3af;
+    padding: 2rem;
+}
+
+.empty-state {
+    text-align: center;
+    color: #9ca3af;
+    padding: 2rem;
+    font-style: italic;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-overlay.active {
+    display: block;
+}
+
+.modal-container {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    z-index: 1001;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-container.scheduled-modal {
+    max-width: 600px;
+}
+
+.modal-container.active {
+    display: block;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #1f2937;
+}
+
+.btn-close {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-close:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.form-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.days-checkboxes {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+.day-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #374151;
+}
+
+.day-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+</style>
+
+<script>
+let checkPayees = [];
+let eftCards = [];
+let eftPayees = [];
+let scheduledChecks = [];
+let scheduledEFTs = [];
+
+function showTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    if (tab === 'values') {
+        document.querySelector('.tab-btn:first-child').classList.add('active');
+        document.getElementById('values-tab').classList.add('active');
+    } else if (tab === 'scheduled') {
+        document.querySelector('.tab-btn:last-child').classList.add('active');
+        document.getElementById('scheduled-tab').classList.add('active');
+        loadScheduledData();
+    }
+}
+
+function populatePayableToOptions(type) {
+    const datalist = document.getElementById('payable-to-options');
+    datalist.innerHTML = '';
+
+    const payees = type === 'check' ? checkPayees : eftPayees;
+
+    payees.forEach(payee => {
+        const option = document.createElement('option');
+        option.value = payee.name;
+        datalist.appendChild(option);
+    });
+}
+
+function populateCardNumberOptions() {
+    const datalist = document.getElementById('card-number-options');
+    datalist.innerHTML = '';
+
+    eftCards.forEach(card => {
+        const option = document.createElement('option');
+        option.value = card.number;
+        datalist.appendChild(option);
+    });
+}
+
+async function loadAllData() {
+    await Promise.all([
+        loadCheckPayees(),
+        loadEFTCards(),
+        loadEFTPayees()
+    ]);
+}
+
+async function loadScheduledData() {
+    await Promise.all([
+        loadScheduledChecks(),
+        loadScheduledEFTs()
+    ]);
+}
+
+async function loadCheckPayees() {
+    try {
+        const response = await fetch('/api/checks-efts/check-payees');
+        if (!response.ok) throw new Error('Failed to load');
+        checkPayees = await response.json();
+        renderCheckPayees();
+    } catch (error) {
+        console.error('Error loading check payees:', error);
+        document.getElementById('check-payees-list').innerHTML = '<div class="empty-state">Error loading data</div>';
+    }
+}
+
+async function loadEFTCards() {
+    try {
+        const response = await fetch('/api/checks-efts/eft-card-numbers');
+        if (!response.ok) throw new Error('Failed to load');
+        eftCards = await response.json();
+        renderEFTCards();
+    } catch (error) {
+        console.error('Error loading EFT cards:', error);
+        document.getElementById('eft-cards-list').innerHTML = '<div class="empty-state">Error loading data</div>';
+    }
+}
+
+async function loadEFTPayees() {
+    try {
+        const response = await fetch('/api/checks-efts/eft-payees');
+        if (!response.ok) throw new Error('Failed to load');
+        eftPayees = await response.json();
+        renderEFTPayees();
+    } catch (error) {
+        console.error('Error loading EFT payees:', error);
+        document.getElementById('eft-payees-list').innerHTML = '<div class="empty-state">Error loading data</div>';
+    }
+}
+
+async function loadScheduledChecks() {
+    try {
+        const response = await fetch('/api/scheduled-checks');
+        if (!response.ok) throw new Error('Failed to load');
+        scheduledChecks = await response.json();
+        renderScheduledChecks();
+    } catch (error) {
+        console.error('Error loading scheduled checks:', error);
+        document.getElementById('scheduled-checks-list').innerHTML = '<div class="empty-state">Error loading data</div>';
+    }
+}
+
+async function loadScheduledEFTs() {
+    try {
+        const response = await fetch('/api/scheduled-efts');
+        if (!response.ok) throw new Error('Failed to load');
+        scheduledEFTs = await response.json();
+        renderScheduledEFTs();
+    } catch (error) {
+        console.error('Error loading scheduled EFTs:', error);
+        document.getElementById('scheduled-efts-list').innerHTML = '<div class="empty-state">Error loading data</div>';
+    }
+}
+
+function renderCheckPayees() {
+    const list = document.getElementById('check-payees-list');
+    if (checkPayees.length === 0) {
+        list.innerHTML = '<div class="empty-state">No check payees defined yet</div>';
+        return;
+    }
+    list.innerHTML = checkPayees.map(p => `
+        <div class="value-item">
+            <span class="value-name">${escapeHtml(p.name)}</span>
+            <div class="value-actions">
+                <button class="btn-icon btn-edit" onclick="editCheckPayee(${p.id})" title="Edit">✎</button>
+                <button class="btn-icon btn-delete" onclick="deleteCheckPayee(${p.id})" title="Delete">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderEFTCards() {
+    const list = document.getElementById('eft-cards-list');
+    if (eftCards.length === 0) {
+        list.innerHTML = '<div class="empty-state">No EFT card numbers defined yet</div>';
+        return;
+    }
+    list.innerHTML = eftCards.map(c => `
+        <div class="value-item">
+            <span class="value-name">${escapeHtml(c.number)}</span>
+            <div class="value-actions">
+                <button class="btn-icon btn-edit" onclick="editEFTCard(${c.id})" title="Edit">✎</button>
+                <button class="btn-icon btn-delete" onclick="deleteEFTCard(${c.id})" title="Delete">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderEFTPayees() {
+    const list = document.getElementById('eft-payees-list');
+    if (eftPayees.length === 0) {
+        list.innerHTML = '<div class="empty-state">No EFT payees defined yet</div>';
+        return;
+    }
+    list.innerHTML = eftPayees.map(p => `
+        <div class="value-item">
+            <span class="value-name">${escapeHtml(p.name)}</span>
+            <div class="value-actions">
+                <button class="btn-icon btn-edit" onclick="editEFTPayee(${p.id})" title="Edit">✎</button>
+                <button class="btn-icon btn-delete" onclick="deleteEFTPayee(${p.id})" title="Delete">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderScheduledChecks() {
+    const list = document.getElementById('scheduled-checks-list');
+    if (scheduledChecks.length === 0) {
+        list.innerHTML = '<div class="empty-state">No scheduled checks defined yet</div>';
+        return;
+    }
+    list.innerHTML = scheduledChecks.map(c => {
+        const days = (c.days_of_week || []).map(d => d.substring(0, 3)).join(', ');
+        const statusBadge = !c.is_active ? '<span class="inactive-badge">Inactive</span>' : '';
+        return `
+            <div class="scheduled-item">
+                <div class="scheduled-header">
+                    <div class="scheduled-info">
+                        <div class="scheduled-payee">${escapeHtml(c.payable_to)}</div>
+                        <div class="scheduled-details">
+                            <div class="scheduled-detail"><strong>Default Total:</strong> $${c.default_total.toFixed(2)}</div>
+                            ${c.memo ? `<div class="scheduled-detail"><strong>Memo:</strong> ${escapeHtml(c.memo)}</div>` : ''}
+                        </div>
+                        <div class="scheduled-days">
+                            ${(c.days_of_week || []).map(d => `<span class="day-badge">${d.substring(0, 3)}</span>`).join('')}
+                            ${statusBadge}
+                        </div>
+                    </div>
+                    <div class="value-actions">
+                        <button class="btn-icon btn-edit" onclick="editScheduledCheck(${c.id})" title="Edit">✎</button>
+                        <button class="btn-icon btn-delete" onclick="deleteScheduledCheck(${c.id})" title="Delete">✕</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderScheduledEFTs() {
+    const list = document.getElementById('scheduled-efts-list');
+    if (scheduledEFTs.length === 0) {
+        list.innerHTML = '<div class="empty-state">No scheduled EFTs defined yet</div>';
+        return;
+    }
+    list.innerHTML = scheduledEFTs.map(e => {
+        const days = (e.days_of_week || []).map(d => d.substring(0, 3)).join(', ');
+        const statusBadge = !e.is_active ? '<span class="inactive-badge">Inactive</span>' : '';
+        return `
+            <div class="scheduled-item">
+                <div class="scheduled-header">
+                    <div class="scheduled-info">
+                        <div class="scheduled-payee">${escapeHtml(e.payable_to)}</div>
+                        <div class="scheduled-details">
+                            ${e.card_number ? `<div class="scheduled-detail"><strong>Card#:</strong> ${escapeHtml(e.card_number)}</div>` : ''}
+                            <div class="scheduled-detail"><strong>Total:</strong> $${e.default_total.toFixed(2)}</div>
+                            ${e.memo ? `<div class="scheduled-detail"><strong>Memo:</strong> ${escapeHtml(e.memo)}</div>` : ''}
+                        </div>
+                        <div class="scheduled-days">
+                            ${(e.days_of_week || []).map(d => `<span class="day-badge">${d.substring(0, 3)}</span>`).join('')}
+                            ${statusBadge}
+                        </div>
+                    </div>
+                    <div class="value-actions">
+                        <button class="btn-icon btn-edit" onclick="editScheduledEFT(${e.id})" title="Edit">✎</button>
+                        <button class="btn-icon btn-delete" onclick="deleteScheduledEFT(${e.id})" title="Delete">✕</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function showAddModal(type) {
+    document.getElementById('value-id').value = '';
+    document.getElementById('value-type').value = type;
+    document.getElementById('value-input').value = '';
+
+    if (type === 'check-payee') {
+        document.getElementById('modal-title').textContent = 'Add Check Payee';
+        document.getElementById('value-label').textContent = 'Payee Name';
+    } else if (type === 'eft-card') {
+        document.getElementById('modal-title').textContent = 'Add EFT Card Number';
+        document.getElementById('value-label').textContent = 'Card Number';
+    } else if (type === 'eft-payee') {
+        document.getElementById('modal-title').textContent = 'Add EFT Payee';
+        document.getElementById('value-label').textContent = 'Payee Name';
+    }
+
+    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById('modal-container').classList.add('active');
+    document.getElementById('value-input').focus();
+}
+
+function showScheduledCheckModal(id = null) {
+    document.getElementById('scheduled-id').value = id || '';
+    document.getElementById('scheduled-type').value = 'check';
+
+    document.getElementById('card-number-group').style.display = 'none';
+
+    populatePayableToOptions('check');
+
+    if (id) {
+        const check = scheduledChecks.find(c => c.id === id);
+        if (check) {
+            document.getElementById('scheduled-modal-title').textContent = 'Edit Scheduled Check';
+            document.getElementById('scheduled-payable-to').value = check.payable_to;
+            document.getElementById('scheduled-total').value = check.default_total;
+            document.getElementById('scheduled-memo').value = check.memo || '';
+            document.getElementById('scheduled-active').checked = check.is_active;
+
+            document.querySelectorAll('input[name="scheduled-days"]').forEach(cb => {
+                cb.checked = (check.days_of_week || []).includes(cb.value);
+            });
+        }
+    } else {
+        document.getElementById('scheduled-modal-title').textContent = 'Add Scheduled Check';
+        document.getElementById('scheduled-payable-to').value = '';
+        document.getElementById('scheduled-total').value = '0.00';
+        document.getElementById('scheduled-memo').value = '';
+        document.getElementById('scheduled-active').checked = true;
+        document.querySelectorAll('input[name="scheduled-days"]').forEach(cb => cb.checked = false);
+    }
+
+    document.getElementById('scheduled-modal-overlay').classList.add('active');
+    document.getElementById('scheduled-modal-container').classList.add('active');
+}
+
+function showScheduledEFTModal(id = null) {
+    document.getElementById('scheduled-id').value = id || '';
+    document.getElementById('scheduled-type').value = 'eft';
+
+    document.getElementById('card-number-group').style.display = 'block';
+
+    populatePayableToOptions('eft');
+    populateCardNumberOptions();
+
+    if (id) {
+        const eft = scheduledEFTs.find(e => e.id === id);
+        if (eft) {
+            document.getElementById('scheduled-modal-title').textContent = 'Edit Scheduled EFT';
+            document.getElementById('scheduled-card-number').value = eft.card_number || '';
+            document.getElementById('scheduled-payable-to').value = eft.payable_to;
+            document.getElementById('scheduled-total').value = eft.default_total;
+            document.getElementById('scheduled-memo').value = eft.memo || '';
+            document.getElementById('scheduled-active').checked = eft.is_active;
+
+            document.querySelectorAll('input[name="scheduled-days"]').forEach(cb => {
+                cb.checked = (eft.days_of_week || []).includes(cb.value);
+            });
+        }
+    } else {
+        document.getElementById('scheduled-modal-title').textContent = 'Add Scheduled EFT';
+        document.getElementById('scheduled-card-number').value = '';
+        document.getElementById('scheduled-payable-to').value = '';
+        document.getElementById('scheduled-total').value = '0.00';
+        document.getElementById('scheduled-memo').value = '';
+        document.getElementById('scheduled-active').checked = true;
+        document.querySelectorAll('input[name="scheduled-days"]').forEach(cb => cb.checked = false);
+    }
+
+    document.getElementById('scheduled-modal-overlay').classList.add('active');
+    document.getElementById('scheduled-modal-container').classList.add('active');
+}
+
+function editCheckPayee(id) {
+    const payee = checkPayees.find(p => p.id === id);
+    if (!payee) return;
+
+    document.getElementById('value-id').value = id;
+    document.getElementById('value-type').value = 'check-payee';
+    document.getElementById('value-input').value = payee.name;
+    document.getElementById('modal-title').textContent = 'Edit Check Payee';
+    document.getElementById('value-label').textContent = 'Payee Name';
+
+    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById('modal-container').classList.add('active');
+    document.getElementById('value-input').focus();
+}
+
+function editEFTCard(id) {
+    const card = eftCards.find(c => c.id === id);
+    if (!card) return;
+
+    document.getElementById('value-id').value = id;
+    document.getElementById('value-type').value = 'eft-card';
+    document.getElementById('value-input').value = card.number;
+    document.getElementById('modal-title').textContent = 'Edit EFT Card Number';
+    document.getElementById('value-label').textContent = 'Card Number';
+
+    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById('modal-container').classList.add('active');
+    document.getElementById('value-input').focus();
+}
+
+function editEFTPayee(id) {
+    const payee = eftPayees.find(p => p.id === id);
+    if (!payee) return;
+
+    document.getElementById('value-id').value = id;
+    document.getElementById('value-type').value = 'eft-payee';
+    document.getElementById('value-input').value = payee.name;
+    document.getElementById('modal-title').textContent = 'Edit EFT Payee';
+    document.getElementById('value-label').textContent = 'Payee Name';
+
+    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById('modal-container').classList.add('active');
+    document.getElementById('value-input').focus();
+}
+
+function editScheduledCheck(id) {
+    showScheduledCheckModal(id);
+}
+
+function editScheduledEFT(id) {
+    showScheduledEFTModal(id);
+}
+
+async function deleteCheckPayee(id) {
+    if (!confirm('Delete this check payee?')) return;
+
+    try {
+        const response = await fetch(`/api/checks-efts/check-payees/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        await loadCheckPayees();
+    } catch (error) {
+        alert('Error deleting check payee: ' + error.message);
+    }
+}
+
+async function deleteEFTCard(id) {
+    if (!confirm('Delete this EFT card number?')) return;
+
+    try {
+        const response = await fetch(`/api/checks-efts/eft-card-numbers/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        await loadEFTCards();
+    } catch (error) {
+        alert('Error deleting EFT card number: ' + error.message);
+    }
+}
+
+async function deleteEFTPayee(id) {
+    if (!confirm('Delete this EFT payee?')) return;
+
+    try {
+        const response = await fetch(`/api/checks-efts/eft-payees/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        await loadEFTPayees();
+    } catch (error) {
+        alert('Error deleting EFT payee: ' + error.message);
+    }
+}
+
+async function deleteScheduledCheck(id) {
+    if (!confirm('Delete this scheduled check?')) return;
+
+    try {
+        const response = await fetch(`/api/scheduled-checks/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        await loadScheduledChecks();
+    } catch (error) {
+        alert('Error deleting scheduled check: ' + error.message);
+    }
+}
+
+async function deleteScheduledEFT(id) {
+    if (!confirm('Delete this scheduled EFT?')) return;
+
+    try {
+        const response = await fetch(`/api/scheduled-efts/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Failed to delete');
+
+        await loadScheduledEFTs();
+    } catch (error) {
+        alert('Error deleting scheduled EFT: ' + error.message);
+    }
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('active');
+    document.getElementById('modal-container').classList.remove('active');
+}
+
+function closeScheduledModal() {
+    document.getElementById('scheduled-modal-overlay').classList.remove('active');
+    document.getElementById('scheduled-modal-container').classList.remove('active');
+}
+
+async function handleSubmit(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('value-id').value;
+    const type = document.getElementById('value-type').value;
+    const value = document.getElementById('value-input').value.trim();
+
+    if (!value) {
+        alert('Please enter a value');
+        return false;
+    }
+
+    try {
+        let url, method, body;
+
+        if (type === 'check-payee') {
+            url = id ? `/api/checks-efts/check-payees/${id}` : '/api/checks-efts/check-payees';
+            method = id ? 'PUT' : 'POST';
+            body = JSON.stringify({ name: value });
+        } else if (type === 'eft-card') {
+            url = id ? `/api/checks-efts/eft-card-numbers/${id}` : '/api/checks-efts/eft-card-numbers';
+            method = id ? 'PUT' : 'POST';
+            body = JSON.stringify({ number: value });
+        } else if (type === 'eft-payee') {
+            url = id ? `/api/checks-efts/eft-payees/${id}` : '/api/checks-efts/eft-payees';
+            method = id ? 'PUT' : 'POST';
+            body = JSON.stringify({ name: value });
+        }
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: body
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to save');
+        }
+
+        closeModal();
+
+        if (type === 'check-payee') {
+            await loadCheckPayees();
+        } else if (type === 'eft-card') {
+            await loadEFTCards();
+        } else if (type === 'eft-payee') {
+            await loadEFTPayees();
+        }
+    } catch (error) {
+        alert('Error saving: ' + error.message);
+    }
+
+    return false;
+}
+
+async function handleScheduledSubmit(event) {
+    event.preventDefault();
+
+    const id = document.getElementById('scheduled-id').value;
+    const type = document.getElementById('scheduled-type').value;
+
+    const selectedDays = Array.from(document.querySelectorAll('input[name="scheduled-days"]:checked')).map(cb => cb.value);
+
+    if (selectedDays.length === 0) {
+        alert('Please select at least one day of the week');
+        return false;
+    }
+
+    const payableTo = document.getElementById('scheduled-payable-to').value.trim();
+    if (!payableTo) {
+        alert('Please enter Payable To');
+        return false;
+    }
+
+    const data = {
+        payable_to: payableTo,
+        default_total: parseFloat(document.getElementById('scheduled-total').value) || 0,
+        days_of_week: selectedDays,
+        memo: document.getElementById('scheduled-memo').value.trim(),
+        is_active: document.getElementById('scheduled-active').checked
+    };
+
+    if (type === 'eft') {
+        data.card_number = document.getElementById('scheduled-card-number').value.trim();
+    }
+
+    try {
+        const url = type === 'check'
+            ? (id ? `/api/scheduled-checks/${id}` : '/api/scheduled-checks')
+            : (id ? `/api/scheduled-efts/${id}` : '/api/scheduled-efts');
+
+        const method = id ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to save');
+        }
+
+        closeScheduledModal();
+
+        if (type === 'check') {
+            await loadScheduledChecks();
+        } else {
+            await loadScheduledEFTs();
+        }
+    } catch (error) {
+        alert('Error saving: ' + error.message);
+    }
+
+    return false;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+document.addEventListener('DOMContentLoaded', loadAllData);
+</script>
+{% endblock %}

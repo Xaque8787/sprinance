@@ -299,6 +299,107 @@
 
     <div class="form-section">
         <div class="section-header">
+            <h3>Checks & EFT</h3>
+            {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
+            <div>
+                <button type="button" class="btn btn-sm" onclick="addCheck()">
+                    <span class="icon">+</span> Add Check
+                </button>
+                <button type="button" class="btn btn-sm" onclick="addEFT()" style="margin-left: 0.5rem;">
+                    <span class="icon">+</span> Add EFT
+                </button>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="checks-efts-container">
+            {% for check in existing_checks %}
+            <div class="check-eft-entry" data-entry-type="check" data-entry-id="{{ loop.index }}">
+                <div class="check-eft-header">
+                    <h4>Check</h4>
+                    {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
+                    <button type="button" class="btn-icon btn-remove" onclick="removeCheckEFT(this)" title="Remove">
+                        <span class="icon">−</span>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" name="check_date_{{ loop.index }}" value="{{ check.date }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="form-group">
+                        <label>Check Number</label>
+                        <input type="text" name="check_number_{{ loop.index }}" value="{{ check.check_number or '' }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="form-group">
+                        <label>Payable To</label>
+                        <div class="combobox-wrapper">
+                            <input type="text" name="check_payable_to_{{ loop.index }}" class="check-payable-to-input combobox-input" list="check-payees-datalist" value="{{ check.payable_to }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %} placeholder="Select or type...">
+                            <span class="combobox-arrow">▼</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Total</label>
+                        <input type="number" step="0.01" name="check_total_{{ loop.index }}" value="{{ check.total }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Memo</label>
+                        <input type="text" name="check_memo_{{ loop.index }}" value="{{ check.memo or '' }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% for eft in existing_efts %}
+            <div class="check-eft-entry" data-entry-type="eft" data-entry-id="{{ loop.index }}">
+                <div class="check-eft-header">
+                    <h4>EFT</h4>
+                    {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
+                    <button type="button" class="btn-icon btn-remove" onclick="removeCheckEFT(this)" title="Remove">
+                        <span class="icon">−</span>
+                    </button>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" name="eft_date_{{ loop.index }}" value="{{ eft.date }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="form-group">
+                        <label>Card Number</label>
+                        <div class="combobox-wrapper">
+                            <input type="text" name="eft_card_number_{{ loop.index }}" class="eft-card-number-input combobox-input" list="eft-card-numbers-datalist" value="{{ eft.card_number or '' }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %} placeholder="Select or type...">
+                            <span class="combobox-arrow">▼</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Payable To</label>
+                        <div class="combobox-wrapper">
+                            <input type="text" name="eft_payable_to_{{ loop.index }}" class="eft-payable-to-input combobox-input" list="eft-payees-datalist" value="{{ eft.payable_to }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %} placeholder="Select or type...">
+                            <span class="combobox-arrow">▼</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Total</label>
+                        <input type="number" step="0.01" name="eft_total_{{ loop.index }}" value="{{ eft.total }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Memo</label>
+                        <input type="text" name="eft_memo_{{ loop.index }}" value="{{ eft.memo or '' }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <datalist id="check-payees-datalist"></datalist>
+        <datalist id="eft-card-numbers-datalist"></datalist>
+        <datalist id="eft-payees-datalist"></datalist>
+    </div>
+
+    <div class="form-section">
+        <div class="section-header">
             <h3>Employee Entries</h3>
             {% if not (daily_balance and daily_balance.finalized and not edit_mode) %}
             <button type="button" class="btn btn-sm" onclick="toggleAddEmployeeModal()">
@@ -1316,6 +1417,10 @@ function toggleFinalizeAdditionalEmail() {
 }
 
 function validateFormBeforeSubmit(event, isForFinalize) {
+    if (!isForFinalize) {
+        return true;
+    }
+
     const errors = [];
     const invalidFields = [];
 
@@ -1357,8 +1462,77 @@ function validateFormBeforeSubmit(event, isForFinalize) {
         }
     });
 
+    document.querySelectorAll('.check-eft-entry').forEach(entry => {
+        const entryType = entry.dataset.entryType;
+        const entryId = entry.dataset.entryId;
+        const entryHeader = entry.querySelector('.check-eft-header h4');
+        const entryLabel = entryHeader ? entryHeader.textContent.trim() : (entryType === 'check' ? 'Check' : 'EFT');
+
+        if (entryType === 'check') {
+            const checkNumberField = entry.querySelector(`input[name="check_number_${entryId}"]`);
+            const payableToField = entry.querySelector(`input[name="check_payable_to_${entryId}"]`);
+            const totalField = entry.querySelector(`input[name="check_total_${entryId}"]`);
+
+            if (checkNumberField && (!checkNumberField.value || checkNumberField.value.trim() === '')) {
+                errors.push(`• ${entryLabel} - Check Number cannot be empty`);
+                checkNumberField.classList.add('field-error-highlight');
+                invalidFields.push(checkNumberField);
+            } else if (checkNumberField && (isNaN(checkNumberField.value) || parseFloat(checkNumberField.value) <= 0)) {
+                errors.push(`• ${entryLabel} - Check Number must be a positive number`);
+                checkNumberField.classList.add('field-error-highlight');
+                invalidFields.push(checkNumberField);
+            }
+
+            if (payableToField && (!payableToField.value || payableToField.value.trim() === '')) {
+                errors.push(`• ${entryLabel} - Payable To cannot be empty`);
+                payableToField.classList.add('field-error-highlight');
+                invalidFields.push(payableToField);
+            }
+
+            if (totalField && (!totalField.value || totalField.value.trim() === '')) {
+                errors.push(`• ${entryLabel} - Total cannot be empty`);
+                totalField.classList.add('field-error-highlight');
+                invalidFields.push(totalField);
+            } else if (totalField && (isNaN(totalField.value) || parseFloat(totalField.value) <= 0)) {
+                errors.push(`• ${entryLabel} - Total must be greater than 0`);
+                totalField.classList.add('field-error-highlight');
+                invalidFields.push(totalField);
+            }
+        } else if (entryType === 'eft') {
+            const cardNumberField = entry.querySelector(`input[name="eft_card_number_${entryId}"]`);
+            const payableToField = entry.querySelector(`input[name="eft_payable_to_${entryId}"]`);
+            const totalField = entry.querySelector(`input[name="eft_total_${entryId}"]`);
+
+            if (cardNumberField && (!cardNumberField.value || cardNumberField.value.trim() === '')) {
+                errors.push(`• ${entryLabel} - Card Number cannot be empty`);
+                cardNumberField.classList.add('field-error-highlight');
+                invalidFields.push(cardNumberField);
+            } else if (cardNumberField && (isNaN(cardNumberField.value) || parseFloat(cardNumberField.value) <= 0)) {
+                errors.push(`• ${entryLabel} - Card Number must be a positive number`);
+                cardNumberField.classList.add('field-error-highlight');
+                invalidFields.push(cardNumberField);
+            }
+
+            if (payableToField && (!payableToField.value || payableToField.value.trim() === '')) {
+                errors.push(`• ${entryLabel} - Payable To cannot be empty`);
+                payableToField.classList.add('field-error-highlight');
+                invalidFields.push(payableToField);
+            }
+
+            if (totalField && (!totalField.value || totalField.value.trim() === '')) {
+                errors.push(`• ${entryLabel} - Total cannot be empty`);
+                totalField.classList.add('field-error-highlight');
+                invalidFields.push(totalField);
+            } else if (totalField && (isNaN(totalField.value) || parseFloat(totalField.value) <= 0)) {
+                errors.push(`• ${entryLabel} - Total must be greater than 0`);
+                totalField.classList.add('field-error-highlight');
+                invalidFields.push(totalField);
+            }
+        }
+    });
+
     if (errors.length > 0) {
-        let errorMessage = `Found ${errors.length} field(s) that cannot be blank. Enter 0 if the value is zero.\n\nFields requiring attention:\n\n`;
+        let errorMessage = `Found ${errors.length} field(s) with validation errors.\n\nFields requiring attention:\n\n`;
         errorMessage += errors.join('\n');
         alert(errorMessage);
 
@@ -1440,9 +1614,308 @@ async function submitFinalize() {
     }
 }
 
+let checkCounter = {{ existing_checks|length if existing_checks else 0 }};
+let eftCounter = {{ existing_efts|length if existing_efts else 0 }};
+let checkPayees = [];
+let eftCardNumbers = [];
+let eftPayees = [];
+
+async function loadCheckPayees() {
+    try {
+        const response = await fetch('/api/checks-efts/check-payees');
+        if (response.ok) {
+            checkPayees = await response.json();
+            updateCheckPayeesDatalist();
+            reinitializeCheckPayeeComboboxes();
+        }
+    } catch (error) {
+        console.error('Failed to load check payees:', error);
+    }
+}
+
+async function loadEFTCardNumbers() {
+    try {
+        const response = await fetch('/api/checks-efts/eft-card-numbers');
+        if (response.ok) {
+            eftCardNumbers = await response.json();
+            updateEFTCardNumbersDatalist();
+            reinitializeCardNumberComboboxes();
+        }
+    } catch (error) {
+        console.error('Failed to load EFT card numbers:', error);
+    }
+}
+
+async function loadEFTPayees() {
+    try {
+        const response = await fetch('/api/checks-efts/eft-payees');
+        if (response.ok) {
+            eftPayees = await response.json();
+            updateEFTPayeesDatalist();
+            reinitializeEFTPayeeComboboxes();
+        }
+    } catch (error) {
+        console.error('Failed to load EFT payees:', error);
+    }
+}
+
+function reinitializeCheckPayeeComboboxes() {
+    document.querySelectorAll('.check-payable-to-input').forEach(input => {
+        setupComboboxDropdown(input, () => checkPayees);
+    });
+}
+
+function reinitializeCardNumberComboboxes() {
+    document.querySelectorAll('.eft-card-number-input').forEach(input => {
+        setupComboboxDropdown(input, () => eftCardNumbers);
+    });
+}
+
+function reinitializeEFTPayeeComboboxes() {
+    document.querySelectorAll('.eft-payable-to-input').forEach(input => {
+        setupComboboxDropdown(input, () => eftPayees);
+    });
+}
+
+function updateCheckPayeesDatalist() {
+    const datalist = document.getElementById('check-payees-datalist');
+    datalist.innerHTML = '';
+    checkPayees.forEach(payee => {
+        const option = document.createElement('option');
+        option.value = payee.name;
+        datalist.appendChild(option);
+    });
+}
+
+function updateEFTCardNumbersDatalist() {
+    const datalist = document.getElementById('eft-card-numbers-datalist');
+    datalist.innerHTML = '';
+    eftCardNumbers.forEach(card => {
+        const option = document.createElement('option');
+        option.value = card.number;
+        datalist.appendChild(option);
+    });
+}
+
+function updateEFTPayeesDatalist() {
+    const datalist = document.getElementById('eft-payees-datalist');
+    datalist.innerHTML = '';
+    eftPayees.forEach(payee => {
+        const option = document.createElement('option');
+        option.value = payee.name;
+        datalist.appendChild(option);
+    });
+}
+
+
+function addCheck() {
+    checkCounter++;
+    const container = document.getElementById('checks-efts-container');
+    const targetDate = '{{ target_date }}';
+
+    const checkDiv = document.createElement('div');
+    checkDiv.className = 'check-eft-entry';
+    checkDiv.dataset.entryType = 'check';
+    checkDiv.dataset.entryId = checkCounter;
+
+    checkDiv.innerHTML = `
+        <div class="check-eft-header">
+            <h4>Check</h4>
+            <button type="button" class="btn-icon btn-remove" onclick="removeCheckEFT(this)" title="Remove">
+                <span class="icon">−</span>
+            </button>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" name="check_date_${checkCounter}" value="${targetDate}">
+            </div>
+            <div class="form-group">
+                <label>Check Number</label>
+                <input type="text" name="check_number_${checkCounter}">
+            </div>
+            <div class="form-group">
+                <label>Payable To</label>
+                <div class="combobox-wrapper">
+                    <input type="text" name="check_payable_to_${checkCounter}" class="check-payable-to-input combobox-input" list="check-payees-datalist" placeholder="Select or type...">
+                    <span class="combobox-arrow">▼</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Total</label>
+                <input type="number" step="0.01" name="check_total_${checkCounter}">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Memo</label>
+                <input type="text" name="check_memo_${checkCounter}">
+            </div>
+        </div>
+    `;
+
+    container.appendChild(checkDiv);
+
+    const payableToInput = checkDiv.querySelector('.check-payable-to-input');
+    setupComboboxDropdown(payableToInput, () => checkPayees);
+}
+
+function addEFT() {
+    eftCounter++;
+    const container = document.getElementById('checks-efts-container');
+    const targetDate = '{{ target_date }}';
+
+    const eftDiv = document.createElement('div');
+    eftDiv.className = 'check-eft-entry';
+    eftDiv.dataset.entryType = 'eft';
+    eftDiv.dataset.entryId = eftCounter;
+
+    eftDiv.innerHTML = `
+        <div class="check-eft-header">
+            <h4>EFT</h4>
+            <button type="button" class="btn-icon btn-remove" onclick="removeCheckEFT(this)" title="Remove">
+                <span class="icon">−</span>
+            </button>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date</label>
+                <input type="date" name="eft_date_${eftCounter}" value="${targetDate}">
+            </div>
+            <div class="form-group">
+                <label>Card Number</label>
+                <div class="combobox-wrapper">
+                    <input type="text" name="eft_card_number_${eftCounter}" class="eft-card-number-input combobox-input" list="eft-card-numbers-datalist" placeholder="Select or type...">
+                    <span class="combobox-arrow">▼</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Payable To</label>
+                <div class="combobox-wrapper">
+                    <input type="text" name="eft_payable_to_${eftCounter}" class="eft-payable-to-input combobox-input" list="eft-payees-datalist" placeholder="Select or type...">
+                    <span class="combobox-arrow">▼</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Total</label>
+                <input type="number" step="0.01" name="eft_total_${eftCounter}">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Memo</label>
+                <input type="text" name="eft_memo_${eftCounter}">
+            </div>
+        </div>
+    `;
+
+    container.appendChild(eftDiv);
+
+    const cardNumberInput = eftDiv.querySelector('.eft-card-number-input');
+    setupComboboxDropdown(cardNumberInput, () => eftCardNumbers);
+
+    const payableToInput = eftDiv.querySelector('.eft-payable-to-input');
+    setupComboboxDropdown(payableToInput, () => eftPayees);
+}
+
+function removeCheckEFT(button) {
+    if (confirm('Remove this entry?')) {
+        button.closest('.check-eft-entry').remove();
+    }
+}
+
+function setupComboboxDropdown(input, getDataSource) {
+    const wrapper = input.closest('.combobox-wrapper');
+    if (!wrapper) return;
+
+    let dropdown = null;
+
+    function showDropdown(shouldFilter = true) {
+        if (dropdown) {
+            dropdown.remove();
+        }
+
+        dropdown = document.createElement('div');
+        dropdown.className = 'combobox-dropdown';
+
+        const dataSource = getDataSource();
+        const filterValue = input.value.toLowerCase().trim();
+        let filteredData = dataSource;
+
+        if (shouldFilter && filterValue) {
+            filteredData = dataSource.filter(item => {
+                const searchValue = item.name || item.number || '';
+                return searchValue.toLowerCase().includes(filterValue);
+            });
+        }
+
+        if (filteredData.length === 0) {
+            dropdown.innerHTML = '<div class="combobox-option combobox-empty">No saved options. Type to add new.</div>';
+        } else {
+            filteredData.forEach(item => {
+                const option = document.createElement('div');
+                option.className = 'combobox-option';
+                option.textContent = item.name || item.number || '';
+                option.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    input.value = item.name || item.number || '';
+                    input.dispatchEvent(new Event('change'));
+                    hideDropdown();
+                    input.blur();
+                });
+                dropdown.appendChild(option);
+            });
+        }
+
+        wrapper.appendChild(dropdown);
+
+        const rect = input.getBoundingClientRect();
+        dropdown.style.width = rect.width + 'px';
+    }
+
+    function hideDropdown() {
+        if (dropdown) {
+            dropdown.remove();
+            dropdown = null;
+        }
+    }
+
+    input.addEventListener('focus', () => {
+        showDropdown(false);
+    });
+
+    input.addEventListener('input', () => {
+        if (document.activeElement === input) {
+            showDropdown(true);
+        }
+    });
+
+    input.addEventListener('blur', () => {
+        setTimeout(hideDropdown, 150);
+    });
+
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('=== Page loaded, initializing ===');
     updateAddEmployeeDropdown();
+
+    loadCheckPayees();
+    loadEFTCardNumbers();
+    loadEFTPayees();
+
+    document.querySelectorAll('.check-payable-to-input').forEach(input => {
+        setupComboboxDropdown(input, () => checkPayees);
+    });
+
+    document.querySelectorAll('.eft-card-number-input').forEach(input => {
+        setupComboboxDropdown(input, () => eftCardNumbers);
+    });
+
+    document.querySelectorAll('.eft-payable-to-input').forEach(input => {
+        setupComboboxDropdown(input, () => eftPayees);
+    });
 
     // Add input listeners and select-on-focus for financial fields
     document.querySelectorAll('.table1-field, .table2-field').forEach(field => {
@@ -1617,6 +2090,109 @@ document.addEventListener('DOMContentLoaded', function() {
 .field-error-highlight {
     border: 2px solid #dc2626 !important;
     background-color: #fee !important;
+}
+
+.check-eft-entry {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.check-eft-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.check-eft-header h4 {
+    margin: 0;
+    color: #374151;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+#checks-efts-container:empty::before {
+    content: "No checks or EFT transactions added yet.";
+    display: block;
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 2rem;
+}
+
+.combobox-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.combobox-wrapper input.combobox-input {
+    flex: 1;
+    padding-right: 2.5rem;
+}
+
+.combobox-arrow {
+    position: absolute;
+    right: 0.75rem;
+    pointer-events: none;
+    color: #6b7280;
+    font-size: 0.75rem;
+    user-select: none;
+}
+
+.combobox-wrapper:hover .combobox-arrow {
+    color: #374151;
+}
+
+.combobox-input:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+}
+
+input[list]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.combobox-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    margin-top: 4px;
+}
+
+.combobox-option {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.combobox-option:hover {
+    background-color: #f3f4f6;
+}
+
+.combobox-option.combobox-empty {
+    color: #9ca3af;
+    font-style: italic;
+    cursor: default;
+}
+
+.combobox-option.combobox-empty:hover {
+    background-color: transparent;
 }
 </style>
 {% endblock %}
