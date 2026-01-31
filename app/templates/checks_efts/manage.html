@@ -117,7 +117,9 @@
                 </div>
                 <div class="form-group">
                     <label>Payable To <span style="color: red;">*</span></label>
-                    <input type="text" id="scheduled-payable-to" class="form-control" required>
+                    <input type="text" id="scheduled-payable-to" class="form-control" list="payable-to-options" required autocomplete="off">
+                    <datalist id="payable-to-options">
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Default Total</label>
@@ -521,6 +523,19 @@ function showTab(tab) {
     }
 }
 
+function populatePayableToOptions(type) {
+    const datalist = document.getElementById('payable-to-options');
+    datalist.innerHTML = '';
+
+    const payees = type === 'check' ? checkPayees : eftPayees;
+
+    payees.forEach(payee => {
+        const option = document.createElement('option');
+        option.value = payee.name;
+        datalist.appendChild(option);
+    });
+}
+
 async function loadAllData() {
     await Promise.all([
         loadCheckPayees(),
@@ -743,6 +758,8 @@ function showScheduledCheckModal(id = null) {
     document.getElementById('check-number-group').style.display = 'block';
     document.getElementById('card-number-group').style.display = 'none';
 
+    populatePayableToOptions('check');
+
     if (id) {
         const check = scheduledChecks.find(c => c.id === id);
         if (check) {
@@ -777,6 +794,8 @@ function showScheduledEFTModal(id = null) {
 
     document.getElementById('check-number-group').style.display = 'none';
     document.getElementById('card-number-group').style.display = 'block';
+
+    populatePayableToOptions('eft');
 
     if (id) {
         const eft = scheduledEFTs.find(e => e.id === id);
