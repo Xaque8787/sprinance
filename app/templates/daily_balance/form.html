@@ -1822,7 +1822,7 @@ function setupComboboxDropdown(input, getDataSource) {
 
     let dropdown = null;
 
-    function showDropdown() {
+    function showDropdown(shouldFilter = true) {
         if (dropdown) {
             dropdown.remove();
         }
@@ -1834,7 +1834,7 @@ function setupComboboxDropdown(input, getDataSource) {
         const filterValue = input.value.toLowerCase().trim();
         let filteredData = dataSource;
 
-        if (filterValue) {
+        if (shouldFilter && filterValue) {
             filteredData = dataSource.filter(item => {
                 const searchValue = item.name || item.number || '';
                 return searchValue.toLowerCase().includes(filterValue);
@@ -1873,12 +1873,12 @@ function setupComboboxDropdown(input, getDataSource) {
     }
 
     input.addEventListener('focus', () => {
-        showDropdown();
+        showDropdown(false);
     });
 
     input.addEventListener('input', () => {
         if (document.activeElement === input) {
-            showDropdown();
+            showDropdown(true);
         }
     });
 
