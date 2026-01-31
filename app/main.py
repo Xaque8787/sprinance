@@ -18,6 +18,15 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 templates = Jinja2Templates(directory="app/templates")
 
+def format_decimal(value, decimals=2):
+    """Format a number to a fixed number of decimal places."""
+    try:
+        return f"{float(value):.{decimals}f}"
+    except (ValueError, TypeError):
+        return value
+
+templates.env.filters["format_decimal"] = format_decimal
+
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(employees.router)

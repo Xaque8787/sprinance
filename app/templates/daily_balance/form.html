@@ -144,7 +144,7 @@
                                 <input type="number" step="0.01"
                                        name="financial_item_{{ template.id }}"
                                        class="table1-field"
-                                       value="{% if financial_line_items.get('revenue_' + template.id|string) %}{{ financial_line_items.get('revenue_' + template.id|string).value }}{% else %}0.00{% endif %}"
+                                       value="{% if financial_line_items.get('revenue_' + template.id|string) %}{{ financial_line_items.get('revenue_' + template.id|string).value|format_decimal }}{% else %}0.00{% endif %}"
                                        {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             </td>
                         </tr>
@@ -158,7 +158,7 @@
                             <td>
                                 <input type="number" step="0.01" readonly
                                        class="table1-field calculated-field"
-                                       value="{{ item.value }}">
+                                       value="{{ item.value|format_decimal }}">
                             </td>
                         </tr>
                                 {% endif %}
@@ -235,7 +235,7 @@
                                 <input type="number" step="0.01"
                                        name="financial_item_{{ template.id }}"
                                        class="table2-field"
-                                       value="{% if financial_line_items.get('expense_' + template.id|string) %}{{ financial_line_items.get('expense_' + template.id|string).value }}{% else %}0.00{% endif %}"
+                                       value="{% if financial_line_items.get('expense_' + template.id|string) %}{{ financial_line_items.get('expense_' + template.id|string).value|format_decimal }}{% else %}0.00{% endif %}"
                                        {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             </td>
                         </tr>
@@ -341,7 +341,7 @@
                     </div>
                     <div class="form-group">
                         <label>Total</label>
-                        <input type="number" step="0.01" name="check_total_{{ loop.index }}" value="{{ check.total }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                        <input type="number" step="0.01" name="check_total_{{ loop.index }}" value="{{ check.total|format_decimal }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Memo</label>
@@ -382,7 +382,7 @@
                     </div>
                     <div class="form-group">
                         <label>Total</label>
-                        <input type="number" step="0.01" name="eft_total_{{ loop.index }}" value="{{ eft.total }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
+                        <input type="number" step="0.01" name="eft_total_{{ loop.index }}" value="{{ eft.total|format_decimal }}" {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label>Memo</label>
@@ -448,7 +448,7 @@
                             <label>{{ req.name }}{% if req.no_null_value and not req.is_total %} <span style="color: #dc2626;">*</span>{% endif %}</label>
                             {% if req.is_total %}
                             <input type="number" step="0.01" readonly
-                                   value="{% if employee_entries.get(emp.combo_id) and employee_entries.get(emp.combo_id).tip_values and employee_entries.get(emp.combo_id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.combo_id).tip_values.get(req.field_name) }}{% else %}0.00{% endif %}"
+                                   value="{% if employee_entries.get(emp.combo_id) and employee_entries.get(emp.combo_id).tip_values and employee_entries.get(emp.combo_id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.combo_id).tip_values.get(req.field_name)|format_decimal }}{% else %}0.00{% endif %}"
                                    class="calculated-field tip-total-field"
                                    data-combo-id="{{ emp.combo_id }}"
                                    data-field-name="{{ req.field_name }}">
@@ -463,7 +463,7 @@
                                    data-revenue-is-deduction="{{ req.revenue_is_deduction|lower }}"
                                    data-apply-to-expense="{{ req.apply_to_expense|lower }}"
                                    data-expense-is-deduction="{{ req.expense_is_deduction|lower }}"
-                                   value="{% if employee_entries.get(emp.combo_id) and employee_entries.get(emp.combo_id).tip_values and employee_entries.get(emp.combo_id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.combo_id).tip_values.get(req.field_name) }}{% else %}0.00{% endif %}"
+                                   value="{% if employee_entries.get(emp.combo_id) and employee_entries.get(emp.combo_id).tip_values and employee_entries.get(emp.combo_id).tip_values.get(req.field_name) %}{{ employee_entries.get(emp.combo_id).tip_values.get(req.field_name)|format_decimal }}{% else %}0.00{% endif %}"
                                    {% if daily_balance and daily_balance.finalized and not edit_mode %}readonly{% endif %}>
                             {% endif %}
                         </div>
@@ -836,7 +836,11 @@ function attachEmployeeInputListeners(container) {
                 this.classList.remove('field-error-highlight');
             }
         });
-        // Add select-on-focus behavior
+        input.addEventListener('blur', function() {
+            if (this.value !== '' && !isNaN(this.value)) {
+                this.value = parseFloat(this.value).toFixed(2);
+            }
+        });
         input.addEventListener('focus', function() {
             this.select();
         });
@@ -1048,7 +1052,11 @@ async function addFinancialTemplate() {
                 this.classList.remove('field-error-highlight');
             }
         });
-        // Add select-on-focus behavior to the new input
+        inputField.addEventListener('blur', function() {
+            if (this.value !== '' && !isNaN(this.value)) {
+                this.value = parseFloat(this.value).toFixed(2);
+            }
+        });
         inputField.addEventListener('focus', function() {
             this.select();
         });
@@ -1756,6 +1764,15 @@ function addCheck() {
 
     const payableToInput = checkDiv.querySelector('.check-payable-to-input');
     setupComboboxDropdown(payableToInput, () => checkPayees);
+
+    const totalInput = checkDiv.querySelector('input[type="number"]');
+    if (totalInput) {
+        totalInput.addEventListener('blur', function() {
+            if (this.value !== '' && !isNaN(this.value)) {
+                this.value = parseFloat(this.value).toFixed(2);
+            }
+        });
+    }
 }
 
 function addEFT() {
@@ -1812,6 +1829,15 @@ function addEFT() {
 
     const payableToInput = eftDiv.querySelector('.eft-payable-to-input');
     setupComboboxDropdown(payableToInput, () => eftPayees);
+
+    const totalInput = eftDiv.querySelector('input[type="number"]');
+    if (totalInput) {
+        totalInput.addEventListener('blur', function() {
+            if (this.value !== '' && !isNaN(this.value)) {
+                this.value = parseFloat(this.value).toFixed(2);
+            }
+        });
+    }
 }
 
 function removeCheckEFT(button) {
@@ -1925,6 +1951,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.classList.remove('field-error-highlight');
             }
         });
+        if (!field.classList.contains('calculated-field')) {
+            field.addEventListener('blur', function() {
+                if (this.value !== '' && !isNaN(this.value)) {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+        }
     });
 
     // Add select-on-focus to all number inputs (financial and employee)
@@ -1955,6 +1988,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     updateEmployeeTipsInFinancialTables();
+
+    // Add blur event to format all number inputs to 2 decimal places
+    document.querySelectorAll('input[type="number"][step="0.01"]').forEach(input => {
+        if (!input.classList.contains('calculated-field') && !input.hasAttribute('readonly')) {
+            input.addEventListener('blur', function() {
+                if (this.value !== '' && !isNaN(this.value)) {
+                    this.value = parseFloat(this.value).toFixed(2);
+                }
+            });
+        }
+    });
 });
 </script>
 
