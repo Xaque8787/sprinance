@@ -1417,6 +1417,10 @@ function toggleFinalizeAdditionalEmail() {
 }
 
 function validateFormBeforeSubmit(event, isForFinalize) {
+    if (!isForFinalize) {
+        return true;
+    }
+
     const errors = [];
     const invalidFields = [];
 
