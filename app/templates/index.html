@@ -26,6 +26,7 @@
             <p>View and generate daily balance and tip reports</p>
         </a>
 
+        {% if current_user.is_admin %}
         <a href="/employees" class="dashboard-card">
             <h3>Employees</h3>
             <p>Manage employee information and schedules</p>
@@ -36,7 +37,6 @@
             <p>Configure positions and tip requirements</p>
         </a>
 
-        {% if current_user.is_admin %}
         <a href="/scheduled-tasks" class="dashboard-card">
             <h3>Scheduled Tasks</h3>
             <p>Automate report generation and backups</p>
