@@ -107,13 +107,11 @@
             <input type="hidden" id="scheduled-type">
 
             <div class="form-row-2col">
-                <div class="form-group" id="check-number-group">
-                    <label>Check Number</label>
-                    <input type="text" id="scheduled-check-number" class="form-control">
-                </div>
                 <div class="form-group" id="card-number-group">
                     <label>Card Number</label>
-                    <input type="text" id="scheduled-card-number" class="form-control">
+                    <input type="text" id="scheduled-card-number" class="form-control" list="card-number-options" autocomplete="off">
+                    <datalist id="card-number-options">
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>Payable To <span style="color: red;">*</span></label>
@@ -536,6 +534,17 @@ function populatePayableToOptions(type) {
     });
 }
 
+function populateCardNumberOptions() {
+    const datalist = document.getElementById('card-number-options');
+    datalist.innerHTML = '';
+
+    eftCards.forEach(card => {
+        const option = document.createElement('option');
+        option.value = card.number;
+        datalist.appendChild(option);
+    });
+}
+
 async function loadAllData() {
     await Promise.all([
         loadCheckPayees(),
@@ -677,8 +686,7 @@ function renderScheduledChecks() {
                     <div class="scheduled-info">
                         <div class="scheduled-payee">${escapeHtml(c.payable_to)}</div>
                         <div class="scheduled-details">
-                            ${c.check_number ? `<div class="scheduled-detail"><strong>Check#:</strong> ${escapeHtml(c.check_number)}</div>` : ''}
-                            <div class="scheduled-detail"><strong>Total:</strong> $${c.default_total.toFixed(2)}</div>
+                            <div class="scheduled-detail"><strong>Default Total:</strong> $${c.default_total.toFixed(2)}</div>
                             ${c.memo ? `<div class="scheduled-detail"><strong>Memo:</strong> ${escapeHtml(c.memo)}</div>` : ''}
                         </div>
                         <div class="scheduled-days">
@@ -755,7 +763,6 @@ function showScheduledCheckModal(id = null) {
     document.getElementById('scheduled-id').value = id || '';
     document.getElementById('scheduled-type').value = 'check';
 
-    document.getElementById('check-number-group').style.display = 'block';
     document.getElementById('card-number-group').style.display = 'none';
 
     populatePayableToOptions('check');
@@ -764,7 +771,6 @@ function showScheduledCheckModal(id = null) {
         const check = scheduledChecks.find(c => c.id === id);
         if (check) {
             document.getElementById('scheduled-modal-title').textContent = 'Edit Scheduled Check';
-            document.getElementById('scheduled-check-number').value = check.check_number || '';
             document.getElementById('scheduled-payable-to').value = check.payable_to;
             document.getElementById('scheduled-total').value = check.default_total;
             document.getElementById('scheduled-memo').value = check.memo || '';
@@ -776,7 +782,6 @@ function showScheduledCheckModal(id = null) {
         }
     } else {
         document.getElementById('scheduled-modal-title').textContent = 'Add Scheduled Check';
-        document.getElementById('scheduled-check-number').value = '';
         document.getElementById('scheduled-payable-to').value = '';
         document.getElementById('scheduled-total').value = '0.00';
         document.getElementById('scheduled-memo').value = '';
@@ -792,10 +797,10 @@ function showScheduledEFTModal(id = null) {
     document.getElementById('scheduled-id').value = id || '';
     document.getElementById('scheduled-type').value = 'eft';
 
-    document.getElementById('check-number-group').style.display = 'none';
     document.getElementById('card-number-group').style.display = 'block';
 
     populatePayableToOptions('eft');
+    populateCardNumberOptions();
 
     if (id) {
         const eft = scheduledEFTs.find(e => e.id === id);
@@ -1053,9 +1058,7 @@ async function handleScheduledSubmit(event) {
         is_active: document.getElementById('scheduled-active').checked
     };
 
-    if (type === 'check') {
-        data.check_number = document.getElementById('scheduled-check-number').value.trim();
-    } else {
+    if (type === 'eft') {
         data.card_number = document.getElementById('scheduled-card-number').value.trim();
     }
 

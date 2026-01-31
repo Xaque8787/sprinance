@@ -1622,6 +1622,7 @@ async function loadCheckPayees() {
         if (response.ok) {
             checkPayees = await response.json();
             updateCheckPayeesDatalist();
+            reinitializeCheckPayeeComboboxes();
         }
     } catch (error) {
         console.error('Failed to load check payees:', error);
@@ -1634,6 +1635,7 @@ async function loadEFTCardNumbers() {
         if (response.ok) {
             eftCardNumbers = await response.json();
             updateEFTCardNumbersDatalist();
+            reinitializeCardNumberComboboxes();
         }
     } catch (error) {
         console.error('Failed to load EFT card numbers:', error);
@@ -1646,10 +1648,29 @@ async function loadEFTPayees() {
         if (response.ok) {
             eftPayees = await response.json();
             updateEFTPayeesDatalist();
+            reinitializeEFTPayeeComboboxes();
         }
     } catch (error) {
         console.error('Failed to load EFT payees:', error);
     }
+}
+
+function reinitializeCheckPayeeComboboxes() {
+    document.querySelectorAll('.check-payable-to-input').forEach(input => {
+        setupComboboxDropdown(input, checkPayees);
+    });
+}
+
+function reinitializeCardNumberComboboxes() {
+    document.querySelectorAll('.eft-card-number-input').forEach(input => {
+        setupComboboxDropdown(input, eftCardNumbers);
+    });
+}
+
+function reinitializeEFTPayeeComboboxes() {
+    document.querySelectorAll('.eft-payable-to-input').forEach(input => {
+        setupComboboxDropdown(input, eftPayees);
+    });
 }
 
 function updateCheckPayeesDatalist() {
