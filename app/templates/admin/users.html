@@ -16,20 +16,6 @@ if (urlParams.get('settings_updated') === 'true') {
 </script>
 
 <div class="page-header">
-    <h2>System Tools</h2>
-</div>
-
-<div class="settings-container" style="margin-bottom: 3rem;">
-    <div class="setting-item">
-        <div class="setting-info">
-            <h3>Checks & EFT Management</h3>
-            <p>Manage checks and EFT transactions for daily balance reports.</p>
-        </div>
-        <a href="/checks-efts/manage" class="btn btn-primary">Manage Checks & EFT</a>
-    </div>
-</div>
-
-<div class="page-header">
     <h2>User Management</h2>
     <a href="/admin/users/new" class="btn btn-primary">Create New User</a>
 </div>
@@ -62,6 +48,20 @@ if (urlParams.get('settings_updated') === 'true') {
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<div class="page-header" style="margin-top: 3rem;">
+    <h2>System Tools</h2>
+</div>
+
+<div class="settings-container">
+    <div class="setting-item">
+        <div class="setting-info">
+            <h3>Checks & EFT Management</h3>
+            <p>Manage checks and EFT transactions for daily balance reports.</p>
+        </div>
+        <a href="/checks-efts/manage" class="btn btn-primary">Manage Checks & EFT</a>
+    </div>
 </div>
 
 <div class="page-header" style="margin-top: 3rem;">
