@@ -1657,19 +1657,19 @@ async function loadEFTPayees() {
 
 function reinitializeCheckPayeeComboboxes() {
     document.querySelectorAll('.check-payable-to-input').forEach(input => {
-        setupComboboxDropdown(input, checkPayees);
+        setupComboboxDropdown(input, () => checkPayees);
     });
 }
 
 function reinitializeCardNumberComboboxes() {
     document.querySelectorAll('.eft-card-number-input').forEach(input => {
-        setupComboboxDropdown(input, eftCardNumbers);
+        setupComboboxDropdown(input, () => eftCardNumbers);
     });
 }
 
 function reinitializeEFTPayeeComboboxes() {
     document.querySelectorAll('.eft-payable-to-input').forEach(input => {
-        setupComboboxDropdown(input, eftPayees);
+        setupComboboxDropdown(input, () => eftPayees);
     });
 }
 
@@ -1751,7 +1751,7 @@ function addCheck() {
     container.appendChild(checkDiv);
 
     const payableToInput = checkDiv.querySelector('.check-payable-to-input');
-    setupComboboxDropdown(payableToInput, checkPayees);
+    setupComboboxDropdown(payableToInput, () => checkPayees);
 }
 
 function addEFT() {
@@ -1804,10 +1804,10 @@ function addEFT() {
     container.appendChild(eftDiv);
 
     const cardNumberInput = eftDiv.querySelector('.eft-card-number-input');
-    setupComboboxDropdown(cardNumberInput, eftCardNumbers);
+    setupComboboxDropdown(cardNumberInput, () => eftCardNumbers);
 
     const payableToInput = eftDiv.querySelector('.eft-payable-to-input');
-    setupComboboxDropdown(payableToInput, eftPayees);
+    setupComboboxDropdown(payableToInput, () => eftPayees);
 }
 
 function removeCheckEFT(button) {
@@ -1816,7 +1816,7 @@ function removeCheckEFT(button) {
     }
 }
 
-function setupComboboxDropdown(input, dataSource) {
+function setupComboboxDropdown(input, getDataSource) {
     const wrapper = input.closest('.combobox-wrapper');
     if (!wrapper) return;
 
@@ -1830,6 +1830,7 @@ function setupComboboxDropdown(input, dataSource) {
         dropdown = document.createElement('div');
         dropdown.className = 'combobox-dropdown';
 
+        const dataSource = getDataSource();
         const filterValue = input.value.toLowerCase().trim();
         let filteredData = dataSource;
 
@@ -1901,15 +1902,15 @@ document.addEventListener('DOMContentLoaded', function() {
     loadEFTPayees();
 
     document.querySelectorAll('.check-payable-to-input').forEach(input => {
-        setupComboboxDropdown(input, checkPayees);
+        setupComboboxDropdown(input, () => checkPayees);
     });
 
     document.querySelectorAll('.eft-card-number-input').forEach(input => {
-        setupComboboxDropdown(input, eftCardNumbers);
+        setupComboboxDropdown(input, () => eftCardNumbers);
     });
 
     document.querySelectorAll('.eft-payable-to-input').forEach(input => {
-        setupComboboxDropdown(input, eftPayees);
+        setupComboboxDropdown(input, () => eftPayees);
     });
 
     // Add input listeners and select-on-focus for financial fields
