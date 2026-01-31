@@ -6,7 +6,7 @@ from sqlalchemy import text
 from typing import List
 from pydantic import BaseModel
 from app.database import get_db
-from app.models import User, CheckPayee, EFTCardNumber, EFTPayee, DailyBalanceCheck, DailyBalanceEFT
+from app.models import User, CheckPayee, EFTCardNumber, EFTPayee, DailyBalanceCheck, DailyBalanceEFT, ScheduledCheck, ScheduledEFT
 from app.auth.jwt_handler import get_current_user, get_current_user_from_cookie
 
 router = APIRouter()
@@ -20,6 +20,22 @@ class EFTCardNumberCreate(BaseModel):
 
 class EFTPayeeCreate(BaseModel):
     name: str
+
+class ScheduledCheckCreate(BaseModel):
+    check_number: str = None
+    payable_to: str
+    default_total: float = 0.0
+    days_of_week: List[str] = []
+    memo: str = None
+    is_active: bool = True
+
+class ScheduledEFTCreate(BaseModel):
+    card_number: str = None
+    payable_to: str
+    default_total: float = 0.0
+    days_of_week: List[str] = []
+    memo: str = None
+    is_active: bool = True
 
 @router.get("/api/checks-efts/check-payees")
 async def get_check_payees(
@@ -289,3 +305,271 @@ async def manage_checks_efts_page(
             "current_user": user
         }
     )
+
+@router.get("/api/scheduled-checks")
+async def get_scheduled_checks(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    checks = db.query(ScheduledCheck).order_by(ScheduledCheck.payable_to).all()
+    return [{
+        "id": c.id,
+        "check_number": c.check_number,
+        "payable_to": c.payable_to,
+        "default_total": c.default_total,
+        "days_of_week": c.days_of_week if c.days_of_week else [],
+        "memo": c.memo,
+        "is_active": c.is_active
+    } for c in checks]
+
+@router.post("/api/scheduled-checks")
+async def create_scheduled_check(
+    check: ScheduledCheckCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payable_to = check.payable_to.strip()
+    if not payable_to:
+        raise HTTPException(status_code=400, detail="Payable To cannot be empty")
+
+    new_check = ScheduledCheck(
+        check_number=check.check_number,
+        payable_to=payable_to,
+        default_total=check.default_total,
+        days_of_week=check.days_of_week,
+        memo=check.memo,
+        is_active=check.is_active
+    )
+    db.add(new_check)
+    db.commit()
+    db.refresh(new_check)
+
+    return {
+        "id": new_check.id,
+        "check_number": new_check.check_number,
+        "payable_to": new_check.payable_to,
+        "default_total": new_check.default_total,
+        "days_of_week": new_check.days_of_week if new_check.days_of_week else [],
+        "memo": new_check.memo,
+        "is_active": new_check.is_active
+    }
+
+@router.put("/api/scheduled-checks/{check_id}")
+async def update_scheduled_check(
+    check_id: int,
+    check: ScheduledCheckCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    existing = db.query(ScheduledCheck).filter(ScheduledCheck.id == check_id).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Scheduled check not found")
+
+    payable_to = check.payable_to.strip()
+    if not payable_to:
+        raise HTTPException(status_code=400, detail="Payable To cannot be empty")
+
+    existing.check_number = check.check_number
+    existing.payable_to = payable_to
+    existing.default_total = check.default_total
+    existing.days_of_week = check.days_of_week
+    existing.memo = check.memo
+    existing.is_active = check.is_active
+
+    db.commit()
+    db.refresh(existing)
+
+    return {
+        "id": existing.id,
+        "check_number": existing.check_number,
+        "payable_to": existing.payable_to,
+        "default_total": existing.default_total,
+        "days_of_week": existing.days_of_week if existing.days_of_week else [],
+        "memo": existing.memo,
+        "is_active": existing.is_active
+    }
+
+@router.delete("/api/scheduled-checks/{check_id}")
+async def delete_scheduled_check(
+    check_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    check = db.query(ScheduledCheck).filter(ScheduledCheck.id == check_id).first()
+    if not check:
+        raise HTTPException(status_code=404, detail="Scheduled check not found")
+
+    db.delete(check)
+    db.commit()
+
+    return {"success": True}
+
+@router.get("/api/scheduled-efts")
+async def get_scheduled_efts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    efts = db.query(ScheduledEFT).order_by(ScheduledEFT.payable_to).all()
+    return [{
+        "id": e.id,
+        "card_number": e.card_number,
+        "payable_to": e.payable_to,
+        "default_total": e.default_total,
+        "days_of_week": e.days_of_week if e.days_of_week else [],
+        "memo": e.memo,
+        "is_active": e.is_active
+    } for e in efts]
+
+@router.post("/api/scheduled-efts")
+async def create_scheduled_eft(
+    eft: ScheduledEFTCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    payable_to = eft.payable_to.strip()
+    if not payable_to:
+        raise HTTPException(status_code=400, detail="Payable To cannot be empty")
+
+    new_eft = ScheduledEFT(
+        card_number=eft.card_number,
+        payable_to=payable_to,
+        default_total=eft.default_total,
+        days_of_week=eft.days_of_week,
+        memo=eft.memo,
+        is_active=eft.is_active
+    )
+    db.add(new_eft)
+    db.commit()
+    db.refresh(new_eft)
+
+    return {
+        "id": new_eft.id,
+        "card_number": new_eft.card_number,
+        "payable_to": new_eft.payable_to,
+        "default_total": new_eft.default_total,
+        "days_of_week": new_eft.days_of_week if new_eft.days_of_week else [],
+        "memo": new_eft.memo,
+        "is_active": new_eft.is_active
+    }
+
+@router.put("/api/scheduled-efts/{eft_id}")
+async def update_scheduled_eft(
+    eft_id: int,
+    eft: ScheduledEFTCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    existing = db.query(ScheduledEFT).filter(ScheduledEFT.id == eft_id).first()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Scheduled EFT not found")
+
+    payable_to = eft.payable_to.strip()
+    if not payable_to:
+        raise HTTPException(status_code=400, detail="Payable To cannot be empty")
+
+    existing.card_number = eft.card_number
+    existing.payable_to = payable_to
+    existing.default_total = eft.default_total
+    existing.days_of_week = eft.days_of_week
+    existing.memo = eft.memo
+    existing.is_active = eft.is_active
+
+    db.commit()
+    db.refresh(existing)
+
+    return {
+        "id": existing.id,
+        "card_number": existing.card_number,
+        "payable_to": existing.payable_to,
+        "default_total": existing.default_total,
+        "days_of_week": existing.days_of_week if existing.days_of_week else [],
+        "memo": existing.memo,
+        "is_active": existing.is_active
+    }
+
+@router.delete("/api/scheduled-efts/{eft_id}")
+async def delete_scheduled_eft(
+    eft_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    eft = db.query(ScheduledEFT).filter(ScheduledEFT.id == eft_id).first()
+    if not eft:
+        raise HTTPException(status_code=404, detail="Scheduled EFT not found")
+
+    db.delete(eft)
+    db.commit()
+
+    return {"success": True}
+
+@router.get("/api/scheduled-checks-for-day")
+async def get_scheduled_checks_for_day(
+    day_of_week: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    checks = db.query(ScheduledCheck).filter(ScheduledCheck.is_active == True).all()
+    matching_checks = []
+
+    for check in checks:
+        days = check.days_of_week if check.days_of_week else []
+        if day_of_week in days:
+            matching_checks.append({
+                "check_number": check.check_number,
+                "payable_to": check.payable_to,
+                "total": check.default_total,
+                "memo": check.memo
+            })
+
+    return matching_checks
+
+@router.get("/api/scheduled-efts-for-day")
+async def get_scheduled_efts_for_day(
+    day_of_week: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    efts = db.query(ScheduledEFT).filter(ScheduledEFT.is_active == True).all()
+    matching_efts = []
+
+    for eft in efts:
+        days = eft.days_of_week if eft.days_of_week else []
+        if day_of_week in days:
+            matching_efts.append({
+                "card_number": eft.card_number,
+                "payable_to": eft.payable_to,
+                "total": eft.default_total,
+                "memo": eft.memo
+            })
+
+    return matching_efts

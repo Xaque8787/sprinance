@@ -7,7 +7,7 @@ from datetime import date as date_cls, datetime
 from typing import List, Optional
 import os
 from app.database import get_db
-from app.models import User, Employee, DailyBalance, DailyEmployeeEntry, FinancialLineItemTemplate, DailyFinancialLineItem, Position, EmployeePositionSchedule, DailyBalanceCheck, DailyBalanceEFT
+from app.models import User, Employee, DailyBalance, DailyEmployeeEntry, FinancialLineItemTemplate, DailyFinancialLineItem, Position, EmployeePositionSchedule, DailyBalanceCheck, DailyBalanceEFT, ScheduledCheck, ScheduledEFT
 from app.auth.jwt_handler import get_current_user
 from app.utils.csv_generator import generate_daily_balance_csv
 
@@ -382,6 +382,32 @@ async def daily_balance_page(
     if daily_balance:
         existing_checks = daily_balance.checks
         existing_efts = daily_balance.efts
+    else:
+        scheduled_checks = db.query(ScheduledCheck).filter(ScheduledCheck.is_active == True).all()
+        for scheduled_check in scheduled_checks:
+            days = scheduled_check.days_of_week if scheduled_check.days_of_week else []
+            if day_of_week in days:
+                check_data = type('obj', (object,), {
+                    'date': target_date,
+                    'check_number': scheduled_check.check_number,
+                    'payable_to': scheduled_check.payable_to,
+                    'total': scheduled_check.default_total,
+                    'memo': scheduled_check.memo
+                })
+                existing_checks.append(check_data)
+
+        scheduled_efts = db.query(ScheduledEFT).filter(ScheduledEFT.is_active == True).all()
+        for scheduled_eft in scheduled_efts:
+            days = scheduled_eft.days_of_week if scheduled_eft.days_of_week else []
+            if day_of_week in days:
+                eft_data = type('obj', (object,), {
+                    'date': target_date,
+                    'card_number': scheduled_eft.card_number,
+                    'payable_to': scheduled_eft.payable_to,
+                    'total': scheduled_eft.default_total,
+                    'memo': scheduled_eft.memo
+                })
+                existing_efts.append(eft_data)
 
     return templates.TemplateResponse(
         "daily_balance/form.html",

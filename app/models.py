@@ -286,3 +286,27 @@ class DailyBalanceEFT(Base):
     memo = Column(Text, nullable=True)
 
     daily_balance = relationship("DailyBalance", back_populates="efts")
+
+class ScheduledCheck(Base):
+    __tablename__ = "scheduled_checks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    check_number = Column(String, nullable=True)
+    payable_to = Column(String, nullable=False)
+    default_total = Column(Float, default=0.0)
+    days_of_week = Column(JSON, default=list)
+    memo = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, nullable=True)
+
+class ScheduledEFT(Base):
+    __tablename__ = "scheduled_efts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    card_number = Column(String, nullable=True)
+    payable_to = Column(String, nullable=False)
+    default_total = Column(Float, default=0.0)
+    days_of_week = Column(JSON, default=list)
+    memo = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, nullable=True)
