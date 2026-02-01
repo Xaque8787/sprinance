@@ -31,6 +31,7 @@ RUN mkdir -p data/scheduler \
              data/backups \
              data/reports/daily_report \
              data/reports/tip_report \
+             data/logs \
              migrations/old && \
     chown -R app:app /app && \
     chmod -R 755 data && \

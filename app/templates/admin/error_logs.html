@@ -1,0 +1,437 @@
+{% extends "base.html" %}
+
+{% block title %}Error Logs - Management System{% endblock %}
+
+{% block content %}
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('settings_updated') === 'true') {
+    alert('✅ Log rotation settings updated successfully!');
+    window.location.href = '/admin/error-logs';
+}
+if (urlParams.get('levels_updated') === 'true') {
+    alert('✅ Log level settings updated successfully!');
+    window.location.href = '/admin/error-logs';
+}
+if (urlParams.get('cleared') === 'true') {
+    alert('✅ Log file cleared successfully!');
+    window.location.href = '/admin/error-logs';
+}
+
+function confirmClearLogs() {
+    if (confirm('⚠️ Are you sure you want to clear the current log file? This action cannot be undone.')) {
+        document.getElementById('clearLogsForm').submit();
+    }
+}
+</script>
+
+<div class="page-header">
+    <h2>Error Logs</h2>
+    <div style="display: flex; gap: 1rem;">
+        <a href="/admin" class="btn btn-secondary">Back to Admin</a>
+        <button onclick="location.reload()" class="btn btn-primary">Refresh Logs</button>
+        <button onclick="confirmClearLogs()" class="btn btn-danger">Clear Log File</button>
+    </div>
+</div>
+
+<form id="clearLogsForm" method="POST" action="/admin/logs/clear" style="display: none;"></form>
+
+<div class="log-stats-container">
+    <div class="stat-card">
+        <h3>Total Log Files</h3>
+        <p class="stat-value">{{ log_stats.total_files }}</p>
+    </div>
+    <div class="stat-card">
+        <h3>Total Size</h3>
+        <p class="stat-value">{{ log_stats.total_size_mb }} MB</p>
+    </div>
+    <div class="stat-card">
+        <h3>Max File Size</h3>
+        <p class="stat-value">{{ log_max_size_mb }} MB</p>
+    </div>
+    <div class="stat-card">
+        <h3>Backups Kept</h3>
+        <p class="stat-value">{{ log_backup_count }}</p>
+    </div>
+</div>
+
+<div class="page-header" style="margin-top: 2rem;">
+    <h3>Log Rotation Settings</h3>
+</div>
+
+<div class="settings-container">
+    <form method="POST" action="/admin/settings/log-rotation" class="log-settings-form">
+        <div class="form-group">
+            <label for="log_max_size_mb">Max Log File Size (MB):</label>
+            <input type="number" id="log_max_size_mb" name="log_max_size_mb" value="{{ log_max_size_mb }}" min="1" max="100" class="form-control">
+            <span class="form-help">Log file will rotate when it reaches this size</span>
+        </div>
+        <div class="form-group">
+            <label for="log_backup_count">Number of Backup Files:</label>
+            <input type="number" id="log_backup_count" name="log_backup_count" value="{{ log_backup_count }}" min="1" max="20" class="form-control">
+            <span class="form-help">Number of rotated log files to keep</span>
+        </div>
+        <button type="submit" class="btn btn-primary">Update Settings</button>
+    </form>
+</div>
+
+<div class="page-header" style="margin-top: 2rem;">
+    <h3>Log Level Settings</h3>
+</div>
+
+<div class="settings-container">
+    <form method="POST" action="/admin/settings/log-levels" class="log-levels-form">
+        <div class="log-levels-grid">
+            <div class="log-level-card disabled">
+                <div class="log-level-header">
+                    <span class="log-level-badge error">ERROR</span>
+                    <span class="always-enabled">Always Enabled</span>
+                </div>
+                <p class="log-level-desc">Critical errors that require immediate attention</p>
+            </div>
+
+            <div class="log-level-card disabled">
+                <div class="log-level-header">
+                    <span class="log-level-badge warning">WARNING</span>
+                    <span class="always-enabled">Always Enabled</span>
+                </div>
+                <p class="log-level-desc">Warning messages about potential issues</p>
+            </div>
+
+            <div class="log-level-card">
+                <div class="log-level-header">
+                    <span class="log-level-badge info">INFO</span>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="log_capture_info" value="1" {% if log_capture_info %}checked{% endif %}>
+                        <span>Enable</span>
+                    </label>
+                </div>
+                <p class="log-level-desc">HTTP requests, database operations, and normal activity</p>
+            </div>
+
+            <div class="log-level-card">
+                <div class="log-level-header">
+                    <span class="log-level-badge debug">DEBUG</span>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="log_capture_debug" value="1" {% if log_capture_debug %}checked{% endif %}>
+                        <span>Enable</span>
+                    </label>
+                </div>
+                <p class="log-level-desc">Detailed debugging info (warning: very verbose)</p>
+            </div>
+        </div>
+
+        <div class="log-warning">
+            <strong>Note:</strong> Enabling INFO and DEBUG logging will significantly increase log file size. Use these for troubleshooting only.
+        </div>
+
+        <button type="submit" class="btn btn-primary">Update Log Levels</button>
+    </form>
+</div>
+
+<div class="page-header" style="margin-top: 2rem;">
+    <h3>Recent Error Logs</h3>
+    <p style="color: #6c757d; font-size: 0.9rem; margin: 0;">Showing most recent 500 entries (newest first)</p>
+</div>
+
+<div class="log-container">
+    {% if log_lines %}
+    <div class="log-viewer">
+        {% for line in log_lines %}
+        <div class="log-entry {% if 'ERROR' in line %}log-error{% elif 'WARNING' in line %}log-warning{% elif 'DEBUG' in line %}log-debug{% else %}log-info{% endif %}">
+            {{ line|trim }}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-logs">
+        <p>No error logs found.</p>
+        <p style="color: #6c757d; font-size: 0.9rem;">Logs will appear here when errors are captured by the application.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if log_stats.files %}
+<div class="page-header" style="margin-top: 2rem;">
+    <h3>Log Files</h3>
+</div>
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in log_stats.files %}
+            <tr>
+                <td>{{ file.name }}</td>
+                <td>{{ file.size_mb }} MB</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<style>
+.log-stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.stat-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.settings-container {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.log-settings-form {
+    display: flex;
+    gap: 2rem;
+    align-items: end;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.form-group .form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.log-container {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.log-viewer {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    max-height: 600px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.log-entry {
+    padding: 0.5rem;
+    border-left: 3px solid transparent;
+    margin-bottom: 0.5rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-error {
+    background: #fff5f5;
+    border-left-color: #dc3545;
+    color: #721c24;
+}
+
+.log-warning {
+    background: #fff3cd;
+    border-left-color: #ffc107;
+    color: #856404;
+}
+
+.log-info {
+    background: #e7f3ff;
+    border-left-color: #0d6efd;
+    color: #084298;
+}
+
+.log-debug {
+    background: #f8f9fa;
+    border-left-color: #6c757d;
+    color: #495057;
+}
+
+.log-levels-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.log-levels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.log-level-card {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.2s;
+}
+
+.log-level-card:not(.disabled):hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.log-level-card.disabled {
+    opacity: 0.7;
+    background: #e9ecef;
+}
+
+.log-level-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.log-level-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.log-level-badge.error {
+    background: #dc3545;
+    color: white;
+}
+
+.log-level-badge.warning {
+    background: #ffc107;
+    color: #000;
+}
+
+.log-level-badge.info {
+    background: #0d6efd;
+    color: white;
+}
+
+.log-level-badge.debug {
+    background: #6c757d;
+    color: white;
+}
+
+.always-enabled {
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.log-level-desc {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+.log-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1rem;
+    color: #856404;
+    font-size: 0.9rem;
+}
+
+.no-logs {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+}
+
+.no-logs p {
+    margin: 0.5rem 0;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+</style>
+{% endblock %}
