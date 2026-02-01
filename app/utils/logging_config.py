@@ -131,6 +131,23 @@ def get_log_stats():
     }
 
 
+def clear_log_file():
+    """
+    Clear the current log file by truncating it.
+    This preserves the file but removes all content.
+    """
+    try:
+        if LOG_FILE.exists():
+            with open(LOG_FILE, 'w', encoding='utf-8') as f:
+                f.truncate(0)
+            logging.info("Log file cleared by administrator")
+            return True
+        return False
+    except Exception as e:
+        logging.error(f"Error clearing log file: {e}")
+        return False
+
+
 def reconfigure_logging():
     """
     Reconfigure logging based on current database settings.

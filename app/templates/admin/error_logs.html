@@ -13,6 +13,16 @@ if (urlParams.get('levels_updated') === 'true') {
     alert('✅ Log level settings updated successfully!');
     window.location.href = '/admin/error-logs';
 }
+if (urlParams.get('cleared') === 'true') {
+    alert('✅ Log file cleared successfully!');
+    window.location.href = '/admin/error-logs';
+}
+
+function confirmClearLogs() {
+    if (confirm('⚠️ Are you sure you want to clear the current log file? This action cannot be undone.')) {
+        document.getElementById('clearLogsForm').submit();
+    }
+}
 </script>
 
 <div class="page-header">
@@ -20,8 +30,11 @@ if (urlParams.get('levels_updated') === 'true') {
     <div style="display: flex; gap: 1rem;">
         <a href="/admin" class="btn btn-secondary">Back to Admin</a>
         <button onclick="location.reload()" class="btn btn-primary">Refresh Logs</button>
+        <button onclick="confirmClearLogs()" class="btn btn-danger">Clear Log File</button>
     </div>
 </div>
+
+<form id="clearLogsForm" method="POST" action="/admin/logs/clear" style="display: none;"></form>
 
 <div class="log-stats-container">
     <div class="stat-card">
@@ -405,6 +418,20 @@ if (urlParams.get('levels_updated') === 'true') {
 
 .btn-secondary:hover {
     background-color: #5a6268;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
 }
 </style>
 {% endblock %}

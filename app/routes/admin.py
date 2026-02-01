@@ -7,7 +7,7 @@ from app.models import User, Setting
 from app.auth.jwt_handler import get_current_admin_user, get_password_hash
 from app.utils.slugify import create_slug, ensure_unique_slug
 from app.utils.backup import create_backup, list_backups, delete_backup, get_backup_path, restore_backup, get_backup_retention_count, cleanup_old_backups
-from app.utils.logging_config import get_log_files, read_log_file, get_log_stats
+from app.utils.logging_config import get_log_files, read_log_file, get_log_stats, clear_log_file
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -331,5 +331,19 @@ async def update_log_levels(
         reconfigure_logging()
 
         return RedirectResponse(url="/admin/error-logs?levels_updated=true", status_code=302)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/admin/logs/clear")
+async def clear_logs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    try:
+        success = clear_log_file()
+        if success:
+            return RedirectResponse(url="/admin/error-logs?cleared=true", status_code=302)
+        else:
+            raise HTTPException(status_code=404, detail="Log file not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
