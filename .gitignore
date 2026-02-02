@@ -201,6 +201,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+*.db
+
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

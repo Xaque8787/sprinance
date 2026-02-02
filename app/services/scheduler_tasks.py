@@ -138,8 +138,8 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         start_date, end_date = calculate_date_range(date_range_type)
 
         db.execute(text("""
-            INSERT INTO task_executions (task_id, status)
-            VALUES (:task_id, 'running')
+            INSERT INTO task_executions (task_id, started_at, status)
+            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
         """), {"task_id": task_id})
 
         if not commit_with_retry(db):
@@ -274,8 +274,8 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
         start_date, end_date = calculate_date_range(date_range_type)
 
         db.execute(text("""
-            INSERT INTO task_executions (task_id, status)
-            VALUES (:task_id, 'running')
+            INSERT INTO task_executions (task_id, started_at, status)
+            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
         """), {"task_id": task_id})
 
         if not commit_with_retry(db):
@@ -414,8 +414,8 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
         start_date, end_date = calculate_date_range(date_range_type)
 
         db.execute(text("""
-            INSERT INTO task_executions (task_id, status)
-            VALUES (:task_id, 'running')
+            INSERT INTO task_executions (task_id, started_at, status)
+            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
         """), {"task_id": task_id})
 
         if not commit_with_retry(db):
@@ -550,8 +550,8 @@ def run_backup_task(task_id, task_name):
 
     try:
         db.execute(text("""
-            INSERT INTO task_executions (task_id, status)
-            VALUES (:task_id, 'running')
+            INSERT INTO task_executions (task_id, started_at, status)
+            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
         """), {"task_id": task_id})
 
         if not commit_with_retry(db):
