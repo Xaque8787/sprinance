@@ -250,11 +250,19 @@ async def create_scheduled_task(
 
         task_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
 
+        print(f"✓ Created scheduled task '{name}' (ID: {task_id}) in database")
+
         add_job_to_scheduler(
             task_id, name, task_type, schedule_type,
             cron_expression, interval_value, interval_unit, starts_at,
             date_range_type, email_list_json, bypass_opt_in, employee_id
         )
+
+        job = scheduler.get_job(f"task_{task_id}")
+        if job:
+            print(f"✓ Added job to APScheduler - Next run: {job.next_run_time}")
+        else:
+            print(f"✗ WARNING: Job was not added to APScheduler!")
 
         return JSONResponse(
             status_code=200,
@@ -530,7 +538,10 @@ def add_job_to_scheduler(
 
     job_id = f"task_{task_id}"
 
+    print(f"  → Adding job {job_id} to scheduler (type: {task_type}, schedule: {schedule_type})")
+
     if scheduler.get_job(job_id):
+        print(f"  → Job {job_id} already exists, removing old version")
         scheduler.remove_job(job_id)
 
     if task_type == "tip_report":
@@ -587,6 +598,12 @@ def add_job_to_scheduler(
         replace_existing=True
     )
 
+    job = scheduler.get_job(job_id)
+    if job and job.next_run_time:
+        print(f"  ✓ Job {job_id} scheduled successfully - Next run: {job.next_run_time}")
+    else:
+        print(f"  ✗ WARNING: Job {job_id} was added but has no next_run_time!")
+
 def load_scheduled_tasks():
     """Load all active scheduled tasks from the database and add them to the scheduler"""
     db = SessionLocal()
@@ -598,6 +615,7 @@ def load_scheduled_tasks():
             FROM scheduled_tasks WHERE is_active = 1
         """)).fetchall()
 
+        loaded_count = 0
         for task in tasks:
             try:
                 add_job_to_scheduler(
@@ -605,12 +623,75 @@ def load_scheduled_tasks():
                     task[4], task[5], task[6], task[7],
                     task[8], task[9], task[10], task[11]
                 )
+                loaded_count += 1
+                print(f"  ✓ Loaded task: {task[1]} (ID: {task[0]})")
             except Exception as e:
-                print(f"Failed to load task {task[1]}: {e}")
+                print(f"  ✗ Failed to load task {task[1]}: {e}")
+                import traceback
+                traceback.print_exc()
 
-        print(f"✓ Loaded {len(tasks)} scheduled tasks")
+        print(f"✓ Loaded {loaded_count}/{len(tasks)} scheduled tasks into APScheduler")
 
     except Exception as e:
         print(f"✗ Failed to load scheduled tasks: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         db.close()
+
+@router.get("/scheduled-tasks/debug")
+async def debug_scheduler(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or not current_user.is_admin:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Unauthorized"}
+        )
+
+    try:
+        tasks_in_db = db.execute(text("""
+            SELECT id, name, task_type, is_active, next_run_at
+            FROM scheduled_tasks
+        """)).fetchall()
+
+        jobs_in_scheduler = []
+        for job in scheduler.get_jobs():
+            jobs_in_scheduler.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "trigger": str(job.trigger)
+            })
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "scheduler_running": scheduler.running,
+                "tasks_in_database": len(tasks_in_db),
+                "jobs_in_scheduler": len(jobs_in_scheduler),
+                "database_tasks": [
+                    {
+                        "id": t[0],
+                        "name": t[1],
+                        "type": t[2],
+                        "active": bool(t[3]),
+                        "next_run_at": t[4]
+                    } for t in tasks_in_db
+                ],
+                "scheduler_jobs": jobs_in_scheduler
+            }
+        )
+
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": str(e),
+                "traceback": traceback.format_exc()
+            }
+        )
