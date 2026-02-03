@@ -14,7 +14,51 @@ from app.scheduler import cleanup_old_executions
 from app.utils.backup import create_backup
 from app.models import Employee
 
-def commit_with_retry(db, max_retries=3, base_delay=0.1):
+def force_update_execution_status(execution_id, status, result_data=None, error_message=None):
+    """
+    Force update execution status using a fresh database connection.
+    This is a last-resort function to ensure status is updated even if
+    the main session has issues.
+    """
+    db = SessionLocal()
+    try:
+        print(f"  → [FORCE UPDATE] Creating fresh DB connection for execution {execution_id}")
+
+        if status == 'success':
+            db.execute(text("""
+                UPDATE task_executions
+                SET completed_at = CURRENT_TIMESTAMP,
+                    status = 'success',
+                    result_data = :result_data
+                WHERE id = :execution_id
+            """), {"execution_id": execution_id, "result_data": result_data})
+        else:
+            db.execute(text("""
+                UPDATE task_executions
+                SET completed_at = CURRENT_TIMESTAMP,
+                    status = 'failed',
+                    error_message = :error_message
+                WHERE id = :execution_id
+            """), {"execution_id": execution_id, "error_message": error_message})
+
+        db.commit()
+        print(f"  → [FORCE UPDATE] Status updated to '{status}' and committed")
+
+        # Verify it stuck
+        verify = db.execute(text("""
+            SELECT status FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).scalar()
+        print(f"  → [FORCE UPDATE] Verification: status is '{verify}'")
+
+        return True
+    except Exception as e:
+        print(f"  ✗ [FORCE UPDATE] Failed: {e}")
+        db.rollback()
+        return False
+    finally:
+        db.close()
+
+def commit_with_retry(db, max_retries=5, base_delay=0.1):
     """
     Attempt to commit database changes with retry logic for SQLite locking issues.
 
@@ -26,22 +70,29 @@ def commit_with_retry(db, max_retries=3, base_delay=0.1):
     Returns:
         bool: True if commit succeeded, False otherwise
     """
+    print(f"  → [COMMIT] Attempting to commit transaction (max {max_retries} attempts)...")
+
     for attempt in range(max_retries):
         try:
             db.commit()
+            print(f"  ✓ [COMMIT] Successfully committed on attempt {attempt + 1}")
             return True
         except OperationalError as e:
             if attempt < max_retries - 1:
                 delay = base_delay * (2 ** attempt)
-                print(f"⚠ Database locked, retrying in {delay}s (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"  ⚠ [COMMIT] Database locked, retrying in {delay}s (attempt {attempt + 1}/{max_retries}): {e}")
                 time.sleep(delay)
                 db.rollback()
             else:
-                print(f"✗ Database commit failed after {max_retries} attempts: {e}")
+                print(f"  ✗ [COMMIT] Database commit failed after {max_retries} attempts: {e}")
+                import traceback
+                traceback.print_exc()
                 db.rollback()
                 return False
         except Exception as e:
-            print(f"✗ Unexpected error during commit: {e}")
+            print(f"  ✗ [COMMIT] Unexpected error during commit: {e}")
+            import traceback
+            traceback.print_exc()
             db.rollback()
             return False
     return False
@@ -131,11 +182,17 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         email_list_json: JSON string of email addresses
         bypass_opt_in: Whether to bypass email opt-in preference (0 or 1)
     """
+    print(f"\n{'='*80}")
+    print(f"▶️  TASK TRIGGERED: '{task_name}' (ID: {task_id}) at {datetime.now()}")
+    print(f"{'='*80}\n")
+
     db = SessionLocal()
     execution_id = None
+    task_succeeded = False
+    final_result_data = None
 
     try:
-        print(f"▶️  Starting tip report task '{task_name}' (ID: {task_id})")
+        print(f"  → Starting tip report task '{task_name}' (ID: {task_id})")
 
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
@@ -184,11 +241,16 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
             if not result["success"]:
                 raise Exception(f"Email sending failed: {result.get('message', 'Unknown error')}")
 
-        result_data = json.dumps({
+        print(f"  → Report generated: {filename}")
+        print(f"  → Emails sent: {len(email_list)}")
+
+        final_result_data = json.dumps({
             "filename": filename,
             "date_range": f"{start_date} to {end_date}",
             "emails_sent": len(email_list)
         })
+
+        print(f"  → [CRITICAL] Marking execution {execution_id} as SUCCESS...")
 
         time.sleep(0.05)
 
@@ -198,15 +260,34 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
                 status = 'success',
                 result_data = :result_data
             WHERE id = :execution_id
-        """), {"execution_id": execution_id, "result_data": result_data})
+        """), {"execution_id": execution_id, "result_data": final_result_data})
 
-        if not commit_with_retry(db):
-            raise Exception("Failed to update task execution status to success")
+        print(f"  → [CRITICAL] UPDATE statement executed, attempting commit...")
 
-        if not verify_execution_status(db, execution_id, 'success'):
-            raise Exception("Task execution status verification failed")
+        commit_success = commit_with_retry(db)
+        print(f"  → [CRITICAL] Commit result: {commit_success}")
+
+        if not commit_success:
+            raise Exception("Failed to commit task execution status to success")
+
+        # Verify status immediately after commit
+        verification = db.execute(text("""
+            SELECT status, completed_at FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).fetchone()
+
+        print(f"  → [CRITICAL] Verification check: status='{verification[0]}', completed_at='{verification[1]}'")
+
+        if verification[0] != 'success':
+            raise Exception(f"Status verification FAILED: expected 'success', got '{verification[0]}'")
+
+        print(f"  ✓ [SUCCESS] Execution {execution_id} confirmed as 'success' in database")
+
+        # Mark that task succeeded for finally block
+        task_succeeded = True
 
         time.sleep(0.05)
+
+        print(f"  → Updating scheduled task metadata...")
 
         task_info = db.execute(text("""
             SELECT schedule_type, cron_expression, interval_value, interval_unit, starts_at
@@ -236,11 +317,13 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         """), {"task_id": task_id, "next_run_at": next_run_at})
 
         if not commit_with_retry(db):
-            print(f"⚠ Warning: Failed to update scheduled task metadata for '{task_name}'")
+            print(f"  ⚠ Warning: Failed to update scheduled task metadata for '{task_name}'")
+        else:
+            print(f"  ✓ Task metadata updated")
 
         cleanup_old_executions(task_id)
 
-        print(f"✓ Tip report task '{task_name}' completed successfully")
+        print(f"✓✓✓ Tip report task '{task_name}' COMPLETED SUCCESSFULLY ✓✓✓")
 
     except Exception as e:
         error_message = str(e)
@@ -271,9 +354,31 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
 
     finally:
         try:
+            print(f"  → [FINALLY] Closing database connection...")
             db.close()
+            print(f"  → [FINALLY] Database connection closed")
+
+            # SAFETY CHECK: If task succeeded but might not have updated status, force update with new connection
+            if task_succeeded and execution_id:
+                print(f"  → [SAFETY] Task succeeded, verifying status with fresh connection...")
+                verify_db = SessionLocal()
+                try:
+                    status_check = verify_db.execute(text("""
+                        SELECT status FROM task_executions WHERE id = :execution_id
+                    """), {"execution_id": execution_id}).scalar()
+
+                    print(f"  → [SAFETY] Status is '{status_check}'")
+
+                    if status_check != 'success':
+                        print(f"  ⚠️  [SAFETY] Status is '{status_check}' but should be 'success'! Force updating...")
+                        force_update_execution_status(execution_id, 'success', final_result_data)
+                    else:
+                        print(f"  ✓ [SAFETY] Status correctly set to 'success'")
+                finally:
+                    verify_db.close()
+
         except Exception as close_error:
-            print(f"  ✗ ERROR closing database: {close_error}")
+            print(f"  ✗ [FINALLY] ERROR closing database: {close_error}")
 
 def run_daily_balance_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in):
     """
@@ -429,9 +534,11 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
 
     finally:
         try:
+            print(f"  → [FINALLY] Closing database connection...")
             db.close()
+            print(f"  → [FINALLY] Database connection closed")
         except Exception as close_error:
-            print(f"  ✗ ERROR closing database: {close_error}")
+            print(f"  ✗ [FINALLY] ERROR closing database: {close_error}")
 
 def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in, employee_id):
     """
@@ -590,9 +697,11 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
 
     finally:
         try:
+            print(f"  → [FINALLY] Closing database connection...")
             db.close()
+            print(f"  → [FINALLY] Database connection closed")
         except Exception as close_error:
-            print(f"  ✗ ERROR closing database: {close_error}")
+            print(f"  ✗ [FINALLY] ERROR closing database: {close_error}")
 
 def run_backup_task(task_id, task_name):
     """
@@ -707,6 +816,8 @@ def run_backup_task(task_id, task_name):
 
     finally:
         try:
+            print(f"  → [FINALLY] Closing database connection...")
             db.close()
+            print(f"  → [FINALLY] Database connection closed")
         except Exception as close_error:
-            print(f"  ✗ ERROR closing database: {close_error}")
+            print(f"  ✗ [FINALLY] ERROR closing database: {close_error}")

@@ -176,51 +176,11 @@ def cleanup_old_executions(task_id, keep_count=7):
     finally:
         db.close()
 
-def cleanup_stuck_running_tasks():
-    """
-    Find and mark task executions that have been stuck in 'running' state
-    for more than 1 hour as failed. This prevents zombie tasks from
-    accumulating in the database.
-    """
-    db = SessionLocal()
-    try:
-        # Find executions that have been running for more than 1 hour
-        result = db.execute(text("""
-            UPDATE task_executions
-            SET status = 'failed',
-                completed_at = CURRENT_TIMESTAMP,
-                error_message = 'Task was stuck in running state for over 1 hour - likely crashed or had database connection issue'
-            WHERE status = 'running'
-            AND started_at < datetime('now', '-1 hour')
-        """))
-
-        count = result.rowcount
-        if count > 0:
-            db.commit()
-            print(f"⚠️  Cleaned up {count} stuck task execution(s)")
-
-    except Exception as e:
-        print(f"✗ Error cleaning up stuck tasks: {e}")
-        db.rollback()
-    finally:
-        db.close()
-
 def start_scheduler():
     """Start the scheduler if not already running"""
     if not scheduler.running:
         scheduler.start()
         print(f"✓ Scheduler started with timezone: {TIMEZONE}")
-
-        # Schedule periodic cleanup of stuck running tasks (every 15 minutes)
-        scheduler.add_job(
-            cleanup_stuck_running_tasks,
-            trigger='interval',
-            minutes=15,
-            id='cleanup_stuck_tasks',
-            name='Cleanup Stuck Running Tasks',
-            replace_existing=True
-        )
-        print("✓ Scheduled automatic cleanup of stuck tasks (every 15 minutes)")
 
 def shutdown_scheduler():
     """Shutdown the scheduler gracefully"""
