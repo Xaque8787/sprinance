@@ -30,6 +30,7 @@ from sqlalchemy.engine import Engine
 @event.listens_for(Engine, "connect")
 def set_sqlite_pragma(dbapi_conn, connection_record):
     cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")  # CRITICAL: Enable foreign key constraints
     cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for better concurrency
     cursor.execute("PRAGMA busy_timeout=30000")  # 30 second timeout
     cursor.execute("PRAGMA synchronous=NORMAL")  # Balance between safety and performance

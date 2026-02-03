@@ -408,28 +408,64 @@ async def update_scheduled_task(
             content={"success": False, "message": "Unauthorized"}
         )
 
-    form_data = await request.form()
-    name = form_data.get("name", "").strip()
-    task_type = form_data.get("task_type")
-    schedule_type = form_data.get("schedule_type")
-    cron_expression = form_data.get("cron_expression", "").strip() if schedule_type == "cron" else None
-    interval_value = int(form_data.get("interval_value", 0)) if schedule_type == "interval" else None
-    interval_unit = form_data.get("interval_unit") if schedule_type == "interval" else None
-    starts_at = form_data.get("starts_at", "").strip() if schedule_type == "interval" else None
-    date_range_type = form_data.get("date_range_type") if task_type not in ["backup"] else None
-    bypass_opt_in = 1 if form_data.get("bypass_opt_in") == "1" else 0
-    employee_id = int(form_data.get("employee_id")) if form_data.get("employee_id") and form_data.get("employee_id").strip() else None
-
-    user_emails = form_data.getlist("user_emails[]")
-    additional_email = form_data.get("additional_email", "").strip()
-
-    email_list = [email for email in user_emails if email]
-    if additional_email:
-        email_list.append(additional_email)
-
-    email_list_json = json.dumps(email_list) if email_list else None
-
     try:
+        form_data = await request.form()
+        name = form_data.get("name", "").strip()
+        task_type = form_data.get("task_type")
+        schedule_type = form_data.get("schedule_type")
+        cron_expression = form_data.get("cron_expression", "").strip() if schedule_type == "cron" else None
+        interval_value = int(form_data.get("interval_value", 0)) if schedule_type == "interval" else None
+        interval_unit = form_data.get("interval_unit") if schedule_type == "interval" else None
+        starts_at = form_data.get("starts_at", "").strip() if schedule_type == "interval" else None
+        date_range_type = form_data.get("date_range_type") if task_type not in ["backup"] else None
+        bypass_opt_in = 1 if form_data.get("bypass_opt_in") == "1" else 0
+        employee_id = int(form_data.get("employee_id")) if form_data.get("employee_id") and form_data.get("employee_id").strip() else None
+
+        # Validation
+        if not name:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Task name is required"}
+            )
+
+        if schedule_type == "cron" and not cron_expression:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Cron expression is required for cron schedule"}
+            )
+
+        if schedule_type == "interval" and (not interval_value or interval_value <= 0):
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Valid interval value is required for interval schedule"}
+            )
+
+        if task_type == "employee_tip_report" and not employee_id:
+            return JSONResponse(
+                status_code=400,
+                content={"success": False, "message": "Employee selection is required for employee tip reports"}
+            )
+
+        user_emails = form_data.getlist("user_emails[]")
+        additional_email = form_data.get("additional_email", "").strip()
+
+        email_list = [email for email in user_emails if email]
+        if additional_email:
+            email_list.append(additional_email)
+
+        email_list_json = json.dumps(email_list) if email_list else None
+
+        # Verify task exists
+        existing_task = db.execute(text("""
+            SELECT id FROM scheduled_tasks WHERE id = :task_id
+        """), {"task_id": task_id}).fetchone()
+
+        if not existing_task:
+            return JSONResponse(
+                status_code=404,
+                content={"success": False, "message": "Task not found"}
+            )
+
         next_runs = get_next_run_times(schedule_type, cron_expression, interval_value, interval_unit, starts_at, count=1)
         next_run_at = next_runs[0].isoformat() if next_runs else None
 
@@ -446,7 +482,8 @@ async def update_scheduled_task(
                 email_list = :email_list,
                 bypass_opt_in = :bypass_opt_in,
                 next_run_at = :next_run_at,
-                employee_id = :employee_id
+                employee_id = :employee_id,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = :task_id
         """), {
             "name": name,
@@ -465,9 +502,12 @@ async def update_scheduled_task(
         })
         db.commit()
 
+        print(f"✓ Updated task {task_id}: {name}")
+
         job_id = f"task_{task_id}"
         if scheduler.get_job(job_id):
             scheduler.remove_job(job_id)
+            print(f"  → Removed old scheduler job: {job_id}")
 
         task = db.execute(text("""
             SELECT is_active FROM scheduled_tasks WHERE id = :task_id
@@ -479,17 +519,27 @@ async def update_scheduled_task(
                 cron_expression, interval_value, interval_unit, starts_at,
                 date_range_type, email_list_json, bypass_opt_in, employee_id
             )
+            print(f"  → Re-added scheduler job: {job_id}")
 
         return JSONResponse(
             status_code=200,
             content={"success": True, "message": "Scheduled task updated successfully"}
         )
 
-    except Exception as e:
+    except ValueError as e:
         db.rollback()
         return JSONResponse(
+            status_code=400,
+            content={"success": False, "message": f"Validation error: {str(e)}"}
+        )
+    except Exception as e:
+        db.rollback()
+        print(f"✗ Error updating task {task_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
             status_code=500,
-            content={"success": False, "message": str(e)}
+            content={"success": False, "message": f"Failed to update task: {str(e)}"}
         )
 
 @router.delete("/scheduled-tasks/{task_id}")
@@ -509,6 +559,12 @@ async def delete_scheduled_task(
         if scheduler.get_job(job_id):
             scheduler.remove_job(job_id)
 
+        # Explicitly delete task executions first (safety measure even though CASCADE should handle it)
+        db.execute(text("""
+            DELETE FROM task_executions WHERE task_id = :task_id
+        """), {"task_id": task_id})
+
+        # Delete the scheduled task
         db.execute(text("""
             DELETE FROM scheduled_tasks WHERE id = :task_id
         """), {"task_id": task_id})
@@ -604,10 +660,33 @@ def add_job_to_scheduler(
     else:
         print(f"  ✗ WARNING: Job {job_id} was added but has no next_run_time!")
 
+def cleanup_orphaned_executions():
+    """Remove task executions that no longer have a parent scheduled task"""
+    db = SessionLocal()
+    try:
+        result = db.execute(text("""
+            DELETE FROM task_executions
+            WHERE task_id NOT IN (SELECT id FROM scheduled_tasks)
+        """))
+        db.commit()
+        deleted_count = result.rowcount
+        if deleted_count > 0:
+            print(f"✓ Cleaned up {deleted_count} orphaned task execution(s)")
+        return deleted_count
+    except Exception as e:
+        print(f"✗ Failed to cleanup orphaned executions: {e}")
+        db.rollback()
+        return 0
+    finally:
+        db.close()
+
 def load_scheduled_tasks():
     """Load all active scheduled tasks from the database and add them to the scheduler"""
     db = SessionLocal()
     try:
+        # First, cleanup any orphaned executions
+        cleanup_orphaned_executions()
+
         tasks = db.execute(text("""
             SELECT id, name, task_type, schedule_type, cron_expression,
                    interval_value, interval_unit, starts_at, date_range_type,
@@ -639,6 +718,33 @@ def load_scheduled_tasks():
     finally:
         db.close()
 
+@router.post("/scheduled-tasks/cleanup-orphaned")
+async def cleanup_orphaned_executions_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or not current_user.is_admin:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Unauthorized"}
+        )
+
+    try:
+        deleted_count = cleanup_orphaned_executions()
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": f"Cleaned up {deleted_count} orphaned execution(s)",
+                "deleted_count": deleted_count
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": str(e)}
+        )
+
 @router.get("/scheduled-tasks/debug")
 async def debug_scheduler(
     current_user: User = Depends(get_current_user),
@@ -656,6 +762,12 @@ async def debug_scheduler(
             FROM scheduled_tasks
         """)).fetchall()
 
+        # Check for orphaned executions
+        orphaned_executions = db.execute(text("""
+            SELECT COUNT(*) FROM task_executions
+            WHERE task_id NOT IN (SELECT id FROM scheduled_tasks)
+        """)).scalar()
+
         jobs_in_scheduler = []
         for job in scheduler.get_jobs():
             jobs_in_scheduler.append({
@@ -672,6 +784,7 @@ async def debug_scheduler(
                 "scheduler_running": scheduler.running,
                 "tasks_in_database": len(tasks_in_db),
                 "jobs_in_scheduler": len(jobs_in_scheduler),
+                "orphaned_executions": orphaned_executions,
                 "database_tasks": [
                     {
                         "id": t[0],

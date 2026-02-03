@@ -715,18 +715,24 @@ async function handleCreateTask(event) {
         method = 'PUT';
     }
 
-    const response = await fetch(url, {
-        method: method,
-        body: formData
-    });
+    try {
+        const response = await fetch(url, {
+            method: method,
+            body: formData
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (data.success) {
-        alert(taskId ? 'Scheduled task updated successfully' : 'Scheduled task created successfully');
-        location.reload();
-    } else {
-        alert('Error: ' + data.message);
+        if (data.success) {
+            alert(taskId ? 'Scheduled task updated successfully' : 'Scheduled task created successfully');
+            location.reload();
+        } else {
+            console.error('Server error:', data);
+            alert('Error: ' + (data.message || 'Unknown error occurred'));
+        }
+    } catch (error) {
+        console.error('Request failed:', error);
+        alert('Error: Failed to save task. Please check the console for details.');
     }
 
     return false;
