@@ -566,6 +566,7 @@ async def email_daily_balance_report(
     form_data = await request.form()
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
+    attach_csv = form_data.get("attach_csv") == "on"
 
     email_list = []
     for email in user_emails:
@@ -623,7 +624,8 @@ async def email_daily_balance_report(
         report_type="daily",
         report_filepath=filepath,
         subject=subject,
-        date_range=date_display
+        date_range=date_display,
+        attach_csv=attach_csv
     )
 
     if result["success"]:
@@ -654,6 +656,7 @@ async def email_saved_daily_balance_report(
     form_data = await request.form()
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
+    attach_csv = form_data.get("attach_csv") == "on"
 
     email_list = []
     for email in user_emails:
@@ -683,7 +686,8 @@ async def email_saved_daily_balance_report(
         to_emails=email_list,
         report_type="daily",
         report_filepath=filepath,
-        subject=subject
+        subject=subject,
+        attach_csv=attach_csv
     )
 
     if result["success"]:
@@ -714,6 +718,7 @@ async def email_tip_report(
     form_data = await request.form()
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
+    attach_csv = form_data.get("attach_csv") == "on"
 
     email_list = []
     for email in user_emails:
@@ -755,7 +760,8 @@ async def email_tip_report(
         report_type="tips",
         report_filepath=filepath,
         subject=subject,
-        date_range=date_range
+        date_range=date_range,
+        attach_csv=attach_csv
     )
 
     if result["success"]:
@@ -784,6 +790,7 @@ async def email_saved_tip_report(
     form_data = await request.form()
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
+    attach_csv = form_data.get("attach_csv") == "on"
 
     email_list = []
     for email in user_emails:
@@ -813,7 +820,8 @@ async def email_saved_tip_report(
         to_emails=email_list,
         report_type="tips",
         report_filepath=filepath,
-        subject=subject
+        subject=subject,
+        attach_csv=attach_csv
     )
 
     if result["success"]:
@@ -852,6 +860,7 @@ async def email_employee_tip_report(
     form_data = await request.form()
     user_emails = form_data.getlist("user_emails[]")
     additional_email = form_data.get("additional_email", "").strip()
+    attach_csv = form_data.get("attach_csv") == "on"
 
     email_list = []
     for email in user_emails:
@@ -893,7 +902,8 @@ async def email_employee_tip_report(
         report_type="tips",
         report_filepath=filepath,
         subject=subject,
-        date_range=date_range
+        date_range=date_range,
+        attach_csv=attach_csv
     )
 
     if result["success"]:

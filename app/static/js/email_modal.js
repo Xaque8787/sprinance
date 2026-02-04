@@ -132,6 +132,11 @@ class EmailModal {
             }
         }
 
+        const attachCsvCheckbox = document.getElementById('attach_csv_checkbox');
+        if (attachCsvCheckbox && attachCsvCheckbox.checked) {
+            formData.append('attach_csv', 'on');
+        }
+
         if (this.emailContext.type === 'saved_daily') {
             url = `/reports/daily-balance/email/${this.emailContext.year}/${this.emailContext.month}/${this.emailContext.filename}`;
         } else if (this.emailContext.type === 'saved_tip') {

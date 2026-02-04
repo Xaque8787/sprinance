@@ -192,6 +192,13 @@
                        placeholder="email@example.com"
                        class="form-control">
             </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label>
+                    <input type="checkbox" id="export_attach_csv_checkbox">
+                    Attach CSV file to email
+                </label>
+            </div>
         </div>
 
         <div class="modal-actions">
@@ -664,6 +671,11 @@ async function exportReport() {
                 selectedEmails.forEach(email => emailFormData.append('user_emails[]', email));
                 emailFormData.append('start_date', startDate);
                 emailFormData.append('end_date', endDate);
+
+                const attachCsvCheckbox = document.getElementById('export_attach_csv_checkbox');
+                if (attachCsvCheckbox && attachCsvCheckbox.checked) {
+                    emailFormData.append('attach_csv', 'on');
+                }
 
                 const emailResponse = await fetch('/reports/daily-balance/email', {
                     method: 'POST',

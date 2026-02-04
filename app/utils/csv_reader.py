@@ -308,6 +308,17 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
                 if row[0] == 'EMPLOYEE SUMMARY' or 'No payroll summary' in str(row[0]):
                     break
 
+                # Check if this is the TOTAL row
+                if row[0] == 'TOTAL':
+                    # Extract totals from the TOTAL row
+                    for j in range(2, len(headers)):
+                        if j < len(row):
+                            report_data['payroll_summary_totals'].append({
+                                'name': headers[j].strip(),
+                                'value': row[j].strip()
+                            })
+                    break
+
                 # Build payroll summary entry dynamically based on headers
                 entry = {
                     'employee_name': row[0].strip() if len(row) > 0 else '',
@@ -324,7 +335,7 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
                             'value': value_str
                         })
 
-                        # Try to parse numeric value for totals
+                        # Try to parse numeric value for totals (backup calculation)
                         try:
                             # Remove $ and commas, then convert to float
                             numeric_value = float(value_str.replace('$', '').replace(',', ''))
@@ -334,12 +345,13 @@ def parse_tip_report_csv(filepath: str) -> Dict[str, Any]:
 
                 report_data['payroll_summary'].append(entry)
 
-            # Build totals array
-            for j in range(2, len(headers)):
-                report_data['payroll_summary_totals'].append({
-                    'name': headers[j].strip(),
-                    'value': f"${column_totals[j]:,.2f}"
-                })
+            # Build totals array if not already set from TOTAL row
+            if not report_data['payroll_summary_totals']:
+                for j in range(2, len(headers)):
+                    report_data['payroll_summary_totals'].append({
+                        'name': headers[j].strip(),
+                        'value': f"${column_totals[j]:,.2f}"
+                    })
 
     if summary_start is not None:
         header_idx = summary_start + 2
@@ -481,6 +493,12 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
                 if rows[i][0] in ['', 'Date: '] or rows[i][0].startswith('Date: '):
                     break
 
+                # Skip TOTAL row and extract the total value from it
+                if rows[i][3] == 'TOTAL':
+                    report_data['checks_efts_total'] = rows[i][4]
+                    i += 1
+                    break
+
                 total_value = rows[i][4]
                 report_data['checks_efts_summary'].append({
                     'type': rows[i][0],
@@ -491,7 +509,7 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
                     'memo': rows[i][5] if len(rows[i]) > 5 else ''
                 })
 
-                # Try to parse and add to total
+                # Try to parse and add to total (backup calculation if no TOTAL row found)
                 try:
                     numeric_value = float(total_value.replace('$', '').replace(',', ''))
                     checks_efts_total += numeric_value
@@ -500,8 +518,9 @@ def parse_daily_balance_csv(filepath: str) -> Dict[str, Any]:
 
                 i += 1
 
-            # Store the total
-            report_data['checks_efts_total'] = f"${checks_efts_total:,.2f}"
+            # Store the total if not already set from TOTAL row
+            if not report_data['checks_efts_total'] or report_data['checks_efts_total'] == '$0.00':
+                report_data['checks_efts_total'] = f"${checks_efts_total:,.2f}"
 
             # Skip empty rows and update row variable
             while i < len(rows) and (not rows[i] or len(rows[i]) == 0 or rows[i][0] == ''):

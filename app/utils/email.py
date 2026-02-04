@@ -148,6 +148,14 @@ def generate_tip_report_html(report_data: Dict[str, Any]) -> str:
                         html += f'<td>{field.get("value", "")}</td>'
                     html += '</tr>'
 
+                # Add total row if available
+                if report_data.get('payroll_summary_totals'):
+                    html += '<tr class="total-row">'
+                    html += '<td><strong>TOTAL</strong></td><td></td>'
+                    for total_field in report_data['payroll_summary_totals']:
+                        html += f'<td><strong>{total_field.get("value", "")}</strong></td>'
+                    html += '</tr>'
+
                 html += '</tbody></table>'
 
     if report_data.get('summary'):
@@ -346,6 +354,14 @@ def generate_daily_balance_html(report_data: Dict[str, Any]) -> str:
             html += f'<td class="text-right">{item.get("total", "")}</td>'
             html += f'<td>{item.get("memo", "")}</td>'
             html += '</tr>'
+        # Add total row
+        if report_data.get('checks_efts_total'):
+            html += '<tr class="total-row">'
+            html += '<td></td><td></td><td></td>'
+            html += '<td><strong>TOTAL</strong></td>'
+            html += f'<td class="text-right"><strong>{report_data["checks_efts_total"]}</strong></td>'
+            html += '<td></td>'
+            html += '</tr>'
         html += '</tbody></table>'
 
     for daily_report in report_data.get('daily_reports', []):
@@ -476,7 +492,8 @@ def send_report_emails(
     report_type: str,
     report_filepath: str,
     subject: str,
-    date_range: str = None
+    date_range: str = None,
+    attach_csv: bool = False
 ) -> dict:
     if not resend.api_key:
         return {
@@ -538,6 +555,22 @@ def send_report_emails(
             "subject": subject,
             "html": html_body
         }
+
+        # Add CSV attachment if requested
+        if attach_csv:
+            try:
+                import base64
+                with open(report_filepath, 'rb') as f:
+                    csv_content = base64.b64encode(f.read()).decode('utf-8')
+
+                params['attachments'] = [{
+                    'content': csv_content,
+                    'filename': os.path.basename(report_filepath)
+                }]
+            except Exception as e:
+                # Log error but continue sending email without attachment
+                print(f"  ⚠ Warning: Failed to attach CSV to email for {email}: {e}")
+                # Email will still send without attachment
 
         try:
             response = resend.Emails.send(params)

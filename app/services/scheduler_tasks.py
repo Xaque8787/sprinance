@@ -171,7 +171,7 @@ def calculate_date_range(date_range_type):
 
     return start_date, end_date
 
-def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in):
+def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in, attach_csv=False):
     """
     Generate and email a tip report.
 
@@ -181,6 +181,7 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         date_range_type: Type of date range (e.g., 'previous_week')
         email_list_json: JSON string of email addresses
         bypass_opt_in: Whether to bypass email opt-in preference (0 or 1)
+        attach_csv: Whether to attach CSV file to email (default: False)
     """
     print(f"\n{'='*80}")
     print(f"▶️  TASK TRIGGERED: '{task_name}' (ID: {task_id}) at {datetime.now()}")
@@ -235,7 +236,8 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
                 report_type="tips",
                 report_filepath=filepath,
                 subject=subject,
-                date_range=date_range
+                date_range=date_range,
+                attach_csv=attach_csv
             )
 
             if not result["success"]:
@@ -380,7 +382,7 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         except Exception as close_error:
             print(f"  ✗ [FINALLY] ERROR closing database: {close_error}")
 
-def run_daily_balance_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in):
+def run_daily_balance_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in, attach_csv=False):
     """
     Generate and email a daily balance report.
 
@@ -390,6 +392,7 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
         date_range_type: Type of date range (e.g., 'previous_month')
         email_list_json: JSON string of email addresses
         bypass_opt_in: Whether to bypass email opt-in preference (0 or 1)
+        attach_csv: Whether to attach CSV file to email (default: False)
     """
     db = SessionLocal()
     execution_id = None
@@ -441,7 +444,8 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
                 report_type="daily",
                 report_filepath=filepath,
                 subject=subject,
-                date_range=date_range
+                date_range=date_range,
+                attach_csv=attach_csv
             )
 
             if not result["success"]:
@@ -540,7 +544,7 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
         except Exception as close_error:
             print(f"  ✗ [FINALLY] ERROR closing database: {close_error}")
 
-def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in, employee_id):
+def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list_json, bypass_opt_in, employee_id, attach_csv=False):
     """
     Generate and email an employee tip report.
 
@@ -551,6 +555,7 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
         email_list_json: JSON string of email addresses
         bypass_opt_in: Whether to bypass email opt-in preference (0 or 1)
         employee_id: ID of the employee
+        attach_csv: Whether to attach CSV file to email (default: False)
     """
     db = SessionLocal()
     execution_id = None
@@ -603,7 +608,8 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
                 report_type="tips",
                 report_filepath=filepath,
                 subject=subject,
-                date_range=date_range
+                date_range=date_range,
+                attach_csv=attach_csv
             )
 
             if not result["success"]:

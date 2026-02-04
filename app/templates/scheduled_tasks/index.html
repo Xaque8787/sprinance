@@ -239,6 +239,13 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" name="attach_csv" value="1" id="attach_csv">
+                    <label for="attach_csv">Attach CSV file to email</label>
+                </div>
+            </div>
+
             <div id="next_runs_preview" class="next-runs-preview" style="display: none;">
                 <h4>Next 5 Scheduled Runs:</h4>
                 <ul id="next_runs_list"></ul>
@@ -812,6 +819,7 @@ async function editTask(taskId) {
         document.getElementById('additional_email').value = additionalEmails.length > 0 ? additionalEmails[0] : '';
 
         document.getElementById('bypass_opt_in').checked = task.bypass_opt_in === 1;
+        document.getElementById('attach_csv').checked = task.attach_csv === 1;
 
         // Show modal without resetting
         showCreateTaskModal(false);

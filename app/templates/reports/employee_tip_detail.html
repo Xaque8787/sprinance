@@ -183,6 +183,13 @@
                     <label for="export_additional_email" style="font-weight: 600;">Additional Email (Optional):</label>
                     <input type="email" id="export_additional_email" class="form-control" placeholder="email@example.com">
                 </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label>
+                        <input type="checkbox" id="export_attach_csv" style="margin-right: 0.5rem;">
+                        <strong>Attach CSV file to email</strong>
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -585,6 +592,11 @@ async function exportReport() {
 
             if (additionalEmail) {
                 emailFormData.append('additional_email', additionalEmail);
+            }
+
+            const attachCsv = document.getElementById('export_attach_csv').checked;
+            if (attachCsv) {
+                emailFormData.append('attach_csv', 'on');
             }
 
             const emailResponse = await fetch(`/reports/tip-report/employee/${employeeSlug}/email`, {
