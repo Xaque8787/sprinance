@@ -476,7 +476,8 @@ def send_report_emails(
     report_type: str,
     report_filepath: str,
     subject: str,
-    date_range: str = None
+    date_range: str = None,
+    attach_csv: bool = False
 ) -> dict:
     if not resend.api_key:
         return {
@@ -538,6 +539,22 @@ def send_report_emails(
             "subject": subject,
             "html": html_body
         }
+
+        # Add CSV attachment if requested
+        if attach_csv:
+            try:
+                import base64
+                with open(report_filepath, 'rb') as f:
+                    csv_content = base64.b64encode(f.read()).decode('utf-8')
+
+                params['attachments'] = [{
+                    'content': csv_content,
+                    'filename': os.path.basename(report_filepath)
+                }]
+            except Exception as e:
+                # Log error but continue sending email without attachment
+                print(f"  ⚠ Warning: Failed to attach CSV to email for {email}: {e}")
+                # Email will still send without attachment
 
         try:
             response = resend.Emails.send(params)

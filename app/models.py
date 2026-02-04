@@ -213,6 +213,7 @@ class ScheduledTask(Base):
     next_run_at = Column(DateTime, nullable=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=True)
     starts_at = Column(DateTime, nullable=True)
+    attach_csv = Column(Boolean, default=False)
 
     employee = relationship("Employee")
     executions = relationship("TaskExecution", back_populates="task", cascade="all, delete-orphan")
