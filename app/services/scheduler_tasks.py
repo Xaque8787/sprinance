@@ -195,6 +195,14 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
     try:
         print(f"  → Starting tip report task '{task_name}' (ID: {task_id})")
 
+        # Verify the task exists before creating execution
+        task_exists = db.execute(text("""
+            SELECT COUNT(*) FROM scheduled_tasks WHERE id = :task_id
+        """), {"task_id": task_id}).scalar()
+
+        if not task_exists:
+            raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
+
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
@@ -207,6 +215,10 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
             raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
+
+        if not execution_id or execution_id == 0:
+            raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
         print(f"  → Created execution record (ID: {execution_id})")
 
         filename = generate_tip_report_csv(db, start_date, end_date, current_user=None, source="scheduled_task")
@@ -400,6 +412,14 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
     try:
         print(f"▶️  Starting daily balance report task '{task_name}' (ID: {task_id})")
 
+        # Verify the task exists before creating execution
+        task_exists = db.execute(text("""
+            SELECT COUNT(*) FROM scheduled_tasks WHERE id = :task_id
+        """), {"task_id": task_id}).scalar()
+
+        if not task_exists:
+            raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
+
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
@@ -412,6 +432,10 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
             raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
+
+        if not execution_id or execution_id == 0:
+            raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
         print(f"  → Created execution record (ID: {execution_id})")
 
         filename = generate_consolidated_daily_balance_csv(db, start_date, end_date, current_user=None, source="scheduled_task")
@@ -563,6 +587,14 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
     try:
         print(f"▶️  Starting employee tip report task '{task_name}' (ID: {task_id})")
 
+        # Verify the task exists before creating execution
+        task_exists = db.execute(text("""
+            SELECT COUNT(*) FROM scheduled_tasks WHERE id = :task_id
+        """), {"task_id": task_id}).scalar()
+
+        if not task_exists:
+            raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
+
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
@@ -575,6 +607,10 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
             raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
+
+        if not execution_id or execution_id == 0:
+            raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
         print(f"  → Created execution record (ID: {execution_id})")
 
         employee = db.query(Employee).filter(Employee.id == employee_id).first()
@@ -723,6 +759,14 @@ def run_backup_task(task_id, task_name):
     try:
         print(f"▶️  Starting backup task '{task_name}' (ID: {task_id})")
 
+        # Verify the task exists before creating execution
+        task_exists = db.execute(text("""
+            SELECT COUNT(*) FROM scheduled_tasks WHERE id = :task_id
+        """), {"task_id": task_id}).scalar()
+
+        if not task_exists:
+            raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
+
         db.execute(text("""
             INSERT INTO task_executions (task_id, started_at, status)
             VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
@@ -732,6 +776,10 @@ def run_backup_task(task_id, task_name):
             raise Exception("Failed to create task execution record")
 
         execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
+
+        if not execution_id or execution_id == 0:
+            raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
         print(f"  → Created execution record (ID: {execution_id})")
 
         filename = create_backup()
