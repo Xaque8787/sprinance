@@ -30,8 +30,8 @@
                 <p class="file-size">File size: {{ (report.file_size / 1024) | round(2) }} KB</p>
             </div>
             <div class="report-item-actions">
-                <a href="/reports/tip-report/view/{{ report.filename }}" class="btn btn-primary">View</a>
-                <a href="/reports/tip-report/download/{{ report.filename }}" class="btn btn-secondary">Download</a>
+                <a href="/reports/tip-report/view/{{ report.year }}/{{ report.month }}/{{ report.filename }}" class="btn btn-primary">View</a>
+                <a href="/reports/tip-report/download/{{ report.year }}/{{ report.month }}/{{ report.filename }}" class="btn btn-secondary">Download</a>
             </div>
         </div>
         {% endfor %}

@@ -49,8 +49,8 @@
                     </div>
                 </div>
                 <div class="report-actions">
-                    <a href="/reports/tip-report/view/{{ report.filename }}" class="btn btn-primary btn-sm">View</a>
-                    <a href="/reports/tip-report/download/{{ report.filename }}" class="btn btn-secondary btn-sm">Download</a>
+                    <a href="/reports/tip-report/view/{{ report.year }}/{{ report.month }}/{{ report.filename }}" class="btn btn-primary btn-sm">View</a>
+                    <a href="/reports/tip-report/download/{{ report.year }}/{{ report.month }}/{{ report.filename }}" class="btn btn-secondary btn-sm">Download</a>
                 </div>
             </div>
             {% endfor %}

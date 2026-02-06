@@ -55,36 +55,48 @@ def get_saved_daily_balance_reports(limit: int = None) -> List[Dict[str, Any]]:
     return reports
 
 def get_saved_tip_reports(limit: int = None) -> List[Dict[str, Any]]:
-    reports_dir = "data/reports/tip_report"
-    if not os.path.exists(reports_dir):
+    reports_base_dir = "data/reports/tip_report"
+    if not os.path.exists(reports_base_dir):
         return []
 
     reports = []
-    for filename in os.listdir(reports_dir):
-        if filename.endswith('.csv'):
-            filepath = os.path.join(reports_dir, filename)
-            file_stats = os.stat(filepath)
-            created_time = datetime.fromtimestamp(file_stats.st_mtime)
+    for year_dir in os.listdir(reports_base_dir):
+        year_path = os.path.join(reports_base_dir, year_dir)
+        if not os.path.isdir(year_path):
+            continue
 
-            start_date = None
-            end_date = None
-            if filename.startswith('tip-report-') and filename.endswith('.csv'):
-                parts = filename.replace('tip-report-', '').replace('.csv', '').split('-to-')
-                if len(parts) == 2:
-                    try:
-                        start_date = datetime.strptime(parts[0], '%Y-%m-%d').date()
-                        end_date = datetime.strptime(parts[1], '%Y-%m-%d').date()
-                    except ValueError:
-                        pass
+        for month_dir in os.listdir(year_path):
+            month_path = os.path.join(year_path, month_dir)
+            if not os.path.isdir(month_path):
+                continue
 
-            reports.append({
-                'filename': filename,
-                'filepath': filepath,
-                'created_time': created_time,
-                'start_date': start_date,
-                'end_date': end_date,
-                'file_size': file_stats.st_size
-            })
+            for filename in os.listdir(month_path):
+                if filename.endswith('.csv') and 'tip-report-' in filename:
+                    filepath = os.path.join(month_path, filename)
+                    file_stats = os.stat(filepath)
+                    created_time = datetime.fromtimestamp(file_stats.st_mtime)
+
+                    start_date = None
+                    end_date = None
+                    if filename.startswith('tip-report-') and filename.endswith('.csv'):
+                        parts = filename.replace('tip-report-', '').replace('.csv', '').split('-to-')
+                        if len(parts) == 2:
+                            try:
+                                start_date = datetime.strptime(parts[0], '%Y-%m-%d').date()
+                                end_date = datetime.strptime(parts[1], '%Y-%m-%d').date()
+                            except ValueError:
+                                pass
+
+                    reports.append({
+                        'filename': filename,
+                        'filepath': filepath,
+                        'created_time': created_time,
+                        'start_date': start_date,
+                        'end_date': end_date,
+                        'file_size': file_stats.st_size,
+                        'year': year_dir,
+                        'month': month_dir
+                    })
 
     reports.sort(key=lambda x: x['created_time'], reverse=True)
 

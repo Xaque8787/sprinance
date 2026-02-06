@@ -222,7 +222,9 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         print(f"  → Created execution record (ID: {execution_id})")
 
         filename = generate_tip_report_csv(db, start_date, end_date, current_user=None, source="scheduled_task")
-        filepath = os.path.join(DATABASE_DIR, "reports", "tip_report", filename)
+        year = str(start_date.year)
+        month = f"{start_date.month:02d}"
+        filepath = os.path.join(DATABASE_DIR, "reports", "tip_report", year, month, filename)
 
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Report file not found: {filepath}")
@@ -618,7 +620,9 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
             raise Exception(f"Employee with ID {employee_id} not found")
 
         filename = generate_employee_tip_report_csv(db, employee, start_date, end_date, current_user=None, source="scheduled_task")
-        filepath = os.path.join(DATABASE_DIR, "reports", "tip_report", filename)
+        year = str(start_date.year)
+        month = f"{start_date.month:02d}"
+        filepath = os.path.join(DATABASE_DIR, "reports", "tip_report", year, month, filename)
 
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Report file not found: {filepath}")

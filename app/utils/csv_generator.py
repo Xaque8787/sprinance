@@ -132,7 +132,12 @@ def generate_daily_balance_csv(daily_balance: DailyBalance, employee_entries: Li
     return filepath
 
 def generate_tip_report_csv(db: Session, start_date: date, end_date: date, current_user: Optional[User] = None, source: str = "user") -> str:
-    reports_dir = "data/reports/tip_report"
+    # Use the first month of the date range for directory structure
+    year = str(start_date.year)
+    month = f"{start_date.month:02d}"
+
+    # Create the directory structure: data/reports/tip_report/{year}/{month}/
+    reports_dir = os.path.join("data", "reports", "tip_report", year, month)
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
 
@@ -554,7 +559,12 @@ def generate_consolidated_daily_balance_csv(db: Session, start_date: date, end_d
     return filename
 
 def generate_employee_tip_report_csv(db: Session, employee: Employee, start_date: date, end_date: date, current_user: Optional[User] = None, source: str = "user") -> str:
-    reports_dir = "data/reports/tip_report"
+    # Use the first month of the date range for directory structure
+    year = str(start_date.year)
+    month = f"{start_date.month:02d}"
+
+    # Create the directory structure: data/reports/tip_report/{year}/{month}/
+    reports_dir = os.path.join("data", "reports", "tip_report", year, month)
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
 

@@ -362,7 +362,9 @@ async def generate_employee_tip_report_endpoint(
         )
 
     filename = generate_employee_tip_report_csv(db, employee, start_date_obj, end_date_obj, current_user=current_user, source="user")
-    filepath = os.path.join("data/reports/tip_report", filename)
+    year = str(start_date_obj.year)
+    month = f"{start_date_obj.month:02d}"
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return JSONResponse(
@@ -401,7 +403,9 @@ async def export_employee_tip_report(
         return RedirectResponse(url=f"/reports/tip-report/employee/{employee_slug}", status_code=303)
 
     filename = generate_employee_tip_report_csv(db, employee, start_date_obj, end_date_obj, current_user=current_user, source="user")
-    filepath = os.path.join("data/reports/tip_report", filename)
+    year = str(start_date_obj.year)
+    month = f"{start_date_obj.month:02d}"
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return RedirectResponse(url=f"/reports/tip-report/employee/{employee_slug}", status_code=303)
@@ -429,7 +433,9 @@ async def export_tip_report(
         return RedirectResponse(url="/reports/tip-report", status_code=303)
 
     filename = generate_tip_report_csv(db, start_date_obj, end_date_obj, current_user=current_user, source="user")
-    filepath = os.path.join("data/reports/tip_report", filename)
+    year = str(start_date_obj.year)
+    month = f"{start_date_obj.month:02d}"
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return RedirectResponse(url="/reports/tip-report", status_code=303)
@@ -459,16 +465,18 @@ async def saved_tip_reports(
         }
     )
 
-@router.get("/reports/tip-report/view/{filename}")
+@router.get("/reports/tip-report/view/{year}/{month}/{filename}")
 async def view_saved_tip_report(
     request: Request,
+    year: str,
+    month: str,
     filename: str,
     current_user: User = Depends(get_current_user)
 ):
     if not current_user:
         return RedirectResponse(url="/login", status_code=303)
 
-    filepath = os.path.join("data/reports/tip_report", filename)
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return RedirectResponse(url="/reports/tip-report", status_code=303)
@@ -488,19 +496,23 @@ async def view_saved_tip_report(
             "request": request,
             "current_user": current_user,
             "filename": filename,
+            "year": year,
+            "month": month,
             "report_data": report_data
         }
     )
 
-@router.get("/reports/tip-report/download/{filename}")
+@router.get("/reports/tip-report/download/{year}/{month}/{filename}")
 async def download_saved_tip_report(
+    year: str,
+    month: str,
     filename: str,
     current_user: User = Depends(get_current_user)
 ):
     if not current_user:
         return RedirectResponse(url="/login", status_code=303)
 
-    filepath = os.path.join("data/reports/tip_report", filename)
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return RedirectResponse(url="/reports/tip-report", status_code=303)
@@ -744,7 +756,9 @@ async def email_tip_report(
         )
 
     filename = generate_tip_report_csv(db, start_date_obj, end_date_obj, current_user=current_user, source="user")
-    filepath = os.path.join("data/reports/tip_report", filename)
+    year = str(start_date_obj.year)
+    month = f"{start_date_obj.month:02d}"
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return JSONResponse(
@@ -775,9 +789,11 @@ async def email_tip_report(
             content=result
         )
 
-@router.post("/reports/tip-report/email/{filename}")
+@router.post("/reports/tip-report/email/{year}/{month}/{filename}")
 async def email_saved_tip_report(
     request: Request,
+    year: str,
+    month: str,
     filename: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -806,7 +822,7 @@ async def email_saved_tip_report(
             content={"success": False, "message": "No valid email addresses provided"}
         )
 
-    filepath = os.path.join("data/reports/tip_report", filename)
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return JSONResponse(
@@ -886,7 +902,9 @@ async def email_employee_tip_report(
         )
 
     filename = generate_employee_tip_report_csv(db, employee, start_date_obj, end_date_obj)
-    filepath = os.path.join("data/reports/tip_report", filename)
+    year = str(start_date_obj.year)
+    month = f"{start_date_obj.month:02d}"
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
 
     if not os.path.exists(filepath):
         return JSONResponse(
