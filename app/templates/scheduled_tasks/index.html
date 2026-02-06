@@ -633,6 +633,7 @@ function toggleTaskTypeFields() {
     const dateRangeType = document.getElementById('date_range_type');
     const emailRecipients = document.querySelector('.form-group:has(.email-selection)');
     const bypassOptIn = document.querySelector('.form-group:has(#bypass_opt_in)');
+    const attachCsv = document.querySelector('.form-group:has(#attach_csv)');
 
     if (taskType === 'employee_tip_report') {
         employeeSelection.style.display = 'block';
@@ -641,6 +642,7 @@ function toggleTaskTypeFields() {
         dateRangeType.required = true;
         if (emailRecipients) emailRecipients.style.display = 'block';
         if (bypassOptIn) bypassOptIn.style.display = 'block';
+        if (attachCsv) attachCsv.style.display = 'block';
     } else if (taskType === 'backup') {
         employeeSelection.style.display = 'none';
         employeeId.required = false;
@@ -648,6 +650,7 @@ function toggleTaskTypeFields() {
         dateRangeType.required = false;
         if (emailRecipients) emailRecipients.style.display = 'none';
         if (bypassOptIn) bypassOptIn.style.display = 'none';
+        if (attachCsv) attachCsv.style.display = 'none';
     } else {
         employeeSelection.style.display = 'none';
         employeeId.required = false;
@@ -655,6 +658,7 @@ function toggleTaskTypeFields() {
         dateRangeType.required = true;
         if (emailRecipients) emailRecipients.style.display = 'block';
         if (bypassOptIn) bypassOptIn.style.display = 'block';
+        if (attachCsv) attachCsv.style.display = 'block';
     }
 }
 
