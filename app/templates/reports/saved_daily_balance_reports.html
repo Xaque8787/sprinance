@@ -32,6 +32,9 @@
             <div class="report-item-actions">
                 <a href="/reports/daily-balance/view/{{ report.year }}/{{ report.month }}/{{ report.filename }}" class="btn btn-primary">View</a>
                 <a href="/reports/daily-balance/download/{{ report.year }}/{{ report.month }}/{{ report.filename }}" class="btn btn-secondary">Download</a>
+                {% if report.is_deletable %}
+                <button class="btn btn-danger" onclick="deleteReport('{{ report.year }}', '{{ report.month }}', '{{ report.filename }}')">Delete</button>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -153,5 +156,43 @@
         width: 100%;
     }
 }
+
+.btn-danger {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
 </style>
+
+<script>
+async function deleteReport(year, month, filename) {
+    if (!confirm(`Are you sure you want to delete this report?\n\n${filename}`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/reports/daily-balance/delete/${year}/${month}/${filename}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Report deleted successfully');
+            window.location.reload();
+        } else {
+            alert(`Failed to delete report: ${data.message}`);
+        }
+    } catch (error) {
+        alert(`Error deleting report: ${error.message}`);
+    }
+}
+</script>
 {% endblock %}

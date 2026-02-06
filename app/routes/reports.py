@@ -179,6 +179,54 @@ async def download_saved_daily_balance_report(
         media_type="text/csv"
     )
 
+@router.delete("/reports/daily-balance/delete/{year}/{month}/{filename}")
+async def delete_saved_daily_balance_report(
+    year: str,
+    month: str,
+    filename: str,
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Unauthorized"}
+        )
+
+    filepath = os.path.join("data", "reports", "daily_report", year, month, filename)
+
+    if not os.path.exists(filepath):
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "Report file not found"}
+        )
+
+    from app.utils.csv_reader import _is_automated_report
+    if _is_automated_report(filepath):
+        return JSONResponse(
+            status_code=403,
+            content={"success": False, "message": "Cannot delete automated reports"}
+        )
+
+    if filename.startswith('daily-balance-') and filename.endswith('.csv'):
+        parts = filename.replace('daily-balance-', '').replace('.csv', '').split('-to-')
+        if len(parts) == 2 and parts[0] == parts[1]:
+            return JSONResponse(
+                status_code=403,
+                content={"success": False, "message": "Cannot delete daily balance finalizations"}
+            )
+
+    try:
+        os.remove(filepath)
+        return JSONResponse(
+            status_code=200,
+            content={"success": True, "message": "Report deleted successfully"}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Error deleting report: {str(e)}"}
+        )
+
 @router.get("/reports/daily-balance/saved")
 async def saved_daily_balance_reports(
     request: Request,
@@ -522,6 +570,46 @@ async def download_saved_tip_report(
         filename=filename,
         media_type="text/csv"
     )
+
+@router.delete("/reports/tip-report/delete/{year}/{month}/{filename}")
+async def delete_saved_tip_report(
+    year: str,
+    month: str,
+    filename: str,
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Unauthorized"}
+        )
+
+    filepath = os.path.join("data/reports/tip_report", year, month, filename)
+
+    if not os.path.exists(filepath):
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "Report file not found"}
+        )
+
+    from app.utils.csv_reader import _is_automated_report
+    if _is_automated_report(filepath):
+        return JSONResponse(
+            status_code=403,
+            content={"success": False, "message": "Cannot delete automated reports"}
+        )
+
+    try:
+        os.remove(filepath)
+        return JSONResponse(
+            status_code=200,
+            content={"success": True, "message": "Report deleted successfully"}
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": f"Error deleting report: {str(e)}"}
+        )
 
 @router.get("/reports/api/admin-users")
 async def get_admin_users_for_email(
