@@ -9,6 +9,8 @@ Description:
 
     For reports spanning multiple months, the file is placed in the directory
     corresponding to the starting month of the date range.
+
+    NOTE: This is a file system migration, not a database schema migration.
 """
 
 import os
@@ -16,7 +18,9 @@ import shutil
 import re
 from datetime import datetime
 
-def run_migration():
+MIGRATION_ID = "2026_02_06_reorganize_tip_reports"
+
+def upgrade(conn, column_exists, table_exists):
     """
     Reorganize tip report files into year/month directory structure.
     """
@@ -24,11 +28,18 @@ def run_migration():
     print("MIGRATION: Reorganize Tip Report Files")
     print("=" * 80)
 
-    reports_base_dir = "data/reports/tip_report"
+    # Determine the correct path (Docker or local)
+    if os.path.exists("/app/data/reports/tip_report"):
+        reports_base_dir = "/app/data/reports/tip_report"
+    else:
+        reports_base_dir = "data/reports/tip_report"
 
     if not os.path.exists(reports_base_dir):
         print(f"✗ Reports directory not found: {reports_base_dir}")
-        return False
+        print("ℹ️  Creating directory structure...")
+        os.makedirs(reports_base_dir, exist_ok=True)
+        print("✓ Directory created (no files to migrate)")
+        return
 
     # Get all CSV files in the base directory (not in subdirectories)
     csv_files = [
@@ -37,8 +48,9 @@ def run_migration():
     ]
 
     if not csv_files:
-        print("ℹ No files to migrate (all files are already organized)")
-        return True
+        print("ℹ️  No files to migrate (all files are already organized)")
+        print("✓ File reorganization migration completed")
+        return
 
     print(f"\nFound {len(csv_files)} file(s) to migrate\n")
 
@@ -91,8 +103,7 @@ def run_migration():
     print(f"  • Errors: {error_count}")
     print("=" * 80)
 
-    return error_count == 0
+    if error_count > 0:
+        print("\n⚠️  Migration completed with errors. Check output above for details.")
 
-if __name__ == "__main__":
-    success = run_migration()
-    exit(0 if success else 1)
+    print("✓ File reorganization migration completed")
