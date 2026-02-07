@@ -286,6 +286,9 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         if not commit_success:
             raise Exception("Failed to commit task execution status to success")
 
+        # Clear session cache to ensure fresh data is read during verification
+        db.expire_all()
+
         # Verify status immediately after commit
         verification = db.execute(text("""
             SELECT status, completed_at FROM task_executions WHERE id = :execution_id
