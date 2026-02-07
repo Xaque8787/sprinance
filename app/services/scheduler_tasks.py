@@ -286,6 +286,9 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         if not commit_success:
             raise Exception("Failed to commit task execution status to success")
 
+        # Clear session cache to ensure fresh data is read during verification
+        db.expire_all()
+
         # Verify status immediately after commit
         verification = db.execute(text("""
             SELECT status, completed_at FROM task_executions WHERE id = :execution_id
@@ -496,6 +499,9 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
         if not commit_with_retry(db):
             raise Exception("Failed to update task execution status to success")
 
+        # Clear session cache to ensure fresh data is read during verification
+        db.expire_all()
+
         if not verify_execution_status(db, execution_id, 'success'):
             raise Exception("Task execution status verification failed")
 
@@ -675,6 +681,9 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
         if not commit_with_retry(db):
             raise Exception("Failed to update task execution status to success")
 
+        # Clear session cache to ensure fresh data is read during verification
+        db.expire_all()
+
         if not verify_execution_status(db, execution_id, 'success'):
             raise Exception("Task execution status verification failed")
 
@@ -805,6 +814,9 @@ def run_backup_task(task_id, task_name):
 
         if not commit_with_retry(db):
             raise Exception("Failed to update task execution status to success")
+
+        # Clear session cache to ensure fresh data is read during verification
+        db.expire_all()
 
         if not verify_execution_status(db, execution_id, 'success'):
             raise Exception("Task execution status verification failed")
