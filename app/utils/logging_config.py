@@ -24,6 +24,19 @@ class NoiseFilter(logging.Filter):
                 return False
         return True
 
+
+class SuppressRootRedirectFilter(logging.Filter):
+    """Suppress the noisy '/ -> 302' redirect logs from health checks."""
+
+    def filter(self, record):
+        # Only filter uvicorn access logs
+        if record.name != "uvicorn.access":
+            return True
+
+        message = record.getMessage()
+        # Suppress only "GET / HTTP/1.1" with 302 response
+        return not ('"GET / HTTP/1.1" 302' in message)
+
 def setup_error_logging(max_bytes=10485760, backup_count=5, log_level=logging.ERROR):
     """
     Configure rotating file handler for error logging.
@@ -61,6 +74,7 @@ def setup_error_logging(max_bytes=10485760, backup_count=5, log_level=logging.ER
 
     uvicorn_access = logging.getLogger("uvicorn.access")
     uvicorn_access.addHandler(file_handler)
+    uvicorn_access.addFilter(SuppressRootRedirectFilter())
     uvicorn_access.setLevel(log_level)
 
     _file_handler = file_handler
@@ -182,6 +196,9 @@ def reconfigure_logging():
                 root_logger.setLevel(new_level)
 
             uvicorn_access = logging.getLogger("uvicorn.access")
+            # Ensure the suppress filter is always present
+            if not any(isinstance(f, SuppressRootRedirectFilter) for f in uvicorn_access.filters):
+                uvicorn_access.addFilter(SuppressRootRedirectFilter())
             uvicorn_access.setLevel(new_level)
 
             logging.info(f"Logging reconfigured to level: {logging.getLevelName(new_level)}")
