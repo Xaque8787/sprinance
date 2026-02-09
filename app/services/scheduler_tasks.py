@@ -111,16 +111,29 @@ def verify_execution_status(db, execution_id, expected_status):
     """
     try:
         result = db.execute(text("""
-            SELECT status FROM task_executions WHERE id = :execution_id
+            SELECT status, completed_at FROM task_executions WHERE id = :execution_id
         """), {"execution_id": execution_id}).fetchone()
 
-        if result and result[0] == expected_status:
+        if not result:
+            print(f"⚠ Verification failed: No record found for execution_id={execution_id}")
+            # Check if any records exist at all
+            count = db.execute(text("SELECT COUNT(*) FROM task_executions")).scalar()
+            print(f"  → Total records in task_executions: {count}")
+            return False
+
+        actual_status = result[0]
+        completed_at = result[1]
+
+        if actual_status == expected_status:
+            print(f"✓ Verification passed: status='{actual_status}', completed_at='{completed_at}'")
             return True
         else:
-            print(f"⚠ Status mismatch: expected '{expected_status}', got '{result[0] if result else 'None'}'")
+            print(f"⚠ Status mismatch: expected '{expected_status}', got '{actual_status}' (completed_at='{completed_at}')")
             return False
     except Exception as e:
         print(f"✗ Error verifying execution status: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def calculate_date_range(date_range_type):
@@ -286,13 +299,17 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         if not commit_success:
             raise Exception("Failed to commit task execution status to success")
 
-        # Clear session cache to ensure fresh data is read during verification
-        db.expire_all()
+        # Force SQLite to complete any pending writes
+        db.execute(text("SELECT 1")).fetchone()
+        time.sleep(0.1)
 
         # Verify status immediately after commit
         verification = db.execute(text("""
             SELECT status, completed_at FROM task_executions WHERE id = :execution_id
         """), {"execution_id": execution_id}).fetchone()
+
+        if not verification:
+            raise Exception(f"Status verification FAILED: No record found for execution_id={execution_id}")
 
         print(f"  → [CRITICAL] Verification check: status='{verification[0]}', completed_at='{verification[1]}'")
 
@@ -815,8 +832,9 @@ def run_backup_task(task_id, task_name):
         if not commit_with_retry(db):
             raise Exception("Failed to update task execution status to success")
 
-        # Clear session cache to ensure fresh data is read during verification
-        db.expire_all()
+        # Force SQLite to complete any pending writes
+        db.execute(text("SELECT 1")).fetchone()
+        time.sleep(0.1)
 
         if not verify_execution_status(db, execution_id, 'success'):
             raise Exception("Task execution status verification failed")
