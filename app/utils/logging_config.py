@@ -39,7 +39,7 @@ class SuppressRootRedirectFilter(logging.Filter):
 
 def setup_error_logging(max_bytes=10485760, backup_count=5, log_level=logging.ERROR):
     """
-    Configure rotating file handler for error logging.
+    Configure rotating file handler and console handler for error logging.
 
     Args:
         max_bytes: Maximum size of log file before rotation (default 10MB)
@@ -50,30 +50,38 @@ def setup_error_logging(max_bytes=10485760, backup_count=5, log_level=logging.ER
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+
+    # File handler for web UI
     file_handler = RotatingFileHandler(
         LOG_FILE,
         maxBytes=max_bytes,
         backupCount=backup_count,
         encoding='utf-8'
     )
-
     file_handler.setLevel(log_level)
     file_handler.addFilter(NoiseFilter())
-
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
     file_handler.setFormatter(formatter)
+
+    # Console handler for Docker logs
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(log_level)
+    console_handler.addFilter(NoiseFilter())
+    console_handler.setFormatter(formatter)
 
     root_logger = logging.getLogger()
     root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
 
     if root_logger.level > log_level:
         root_logger.setLevel(log_level)
 
     uvicorn_access = logging.getLogger("uvicorn.access")
     uvicorn_access.addHandler(file_handler)
+    uvicorn_access.addHandler(console_handler)
     uvicorn_access.addFilter(SuppressRootRedirectFilter())
     uvicorn_access.setLevel(log_level)
 
@@ -188,17 +196,22 @@ def reconfigure_logging():
             else:
                 new_level = logging.WARNING
 
-            if _file_handler:
-                _file_handler.setLevel(new_level)
-
+            # Update all handlers on root logger
             root_logger = logging.getLogger()
+            for handler in root_logger.handlers:
+                handler.setLevel(new_level)
+
             if root_logger.level > new_level:
                 root_logger.setLevel(new_level)
 
+            # Update uvicorn access logger
             uvicorn_access = logging.getLogger("uvicorn.access")
             # Ensure the suppress filter is always present
             if not any(isinstance(f, SuppressRootRedirectFilter) for f in uvicorn_access.filters):
                 uvicorn_access.addFilter(SuppressRootRedirectFilter())
+
+            for handler in uvicorn_access.handlers:
+                handler.setLevel(new_level)
             uvicorn_access.setLevel(new_level)
 
             logging.info(f"Logging reconfigured to level: {logging.getLevelName(new_level)}")
