@@ -266,6 +266,9 @@ async def create_scheduled_task(
         else:
             print(f"✗ WARNING: Job was not added to APScheduler!")
 
+        # Sync scheduler to ensure consistency
+        sync_scheduler_with_database(db)
+
         return JSONResponse(
             status_code=200,
             content={"success": True, "message": "Scheduled task created successfully"}
@@ -328,6 +331,9 @@ async def toggle_scheduled_task(
         else:
             if scheduler.get_job(job_id):
                 scheduler.remove_job(job_id)
+
+        # Sync scheduler to ensure consistency
+        sync_scheduler_with_database(db)
 
         return JSONResponse(
             status_code=200,
@@ -527,6 +533,9 @@ async def update_scheduled_task(
             )
             print(f"  → Re-added scheduler job: {job_id}")
 
+        # Sync scheduler to ensure consistency
+        sync_scheduler_with_database(db)
+
         return JSONResponse(
             status_code=200,
             content={"success": True, "message": "Scheduled task updated successfully"}
@@ -575,6 +584,9 @@ async def delete_scheduled_task(
             DELETE FROM scheduled_tasks WHERE id = :task_id
         """), {"task_id": task_id})
         db.commit()
+
+        # Sync scheduler to ensure consistency
+        sync_scheduler_with_database(db)
 
         return JSONResponse(
             status_code=200,
@@ -723,6 +735,36 @@ def cleanup_orphaned_scheduler_jobs(db):
         import traceback
         traceback.print_exc()
         return 0
+
+def sync_scheduler_with_database(db):
+    """
+    Synchronize APScheduler with the database after any scheduled task modification.
+    This ensures APScheduler jobs match the database state and prevents orphaned jobs from running.
+    """
+    try:
+        print("  → Syncing scheduler with database...")
+
+        # Clean up orphaned executions first
+        orphaned_exec_count = 0
+        result = db.execute(text("""
+            DELETE FROM task_executions
+            WHERE task_id NOT IN (SELECT id FROM scheduled_tasks)
+        """))
+        db.commit()
+        orphaned_exec_count = result.rowcount
+        if orphaned_exec_count > 0:
+            print(f"    ✓ Removed {orphaned_exec_count} orphaned execution(s)")
+
+        # Clean up orphaned scheduler jobs
+        orphaned_job_count = cleanup_orphaned_scheduler_jobs(db)
+
+        print(f"  ✓ Sync complete: {orphaned_exec_count} executions, {orphaned_job_count} jobs cleaned")
+        return True
+    except Exception as e:
+        print(f"  ✗ Failed to sync scheduler: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def load_scheduled_tasks():
     """Load all active scheduled tasks from the database and add them to the scheduler"""
