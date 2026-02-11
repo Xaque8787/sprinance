@@ -59,6 +59,17 @@ async def scheduled_tasks_page(
     TIMEZONE = os.getenv('TZ', 'America/Los_Angeles')
     tz = pytz.timezone(TIMEZONE)
 
+    # Cleanup stale running executions before displaying
+    db.execute(text("""
+        UPDATE task_executions
+        SET status = 'failed',
+            completed_at = CURRENT_TIMESTAMP,
+            error_message = 'Task execution marked as stale (exceeded timeout)'
+        WHERE status = 'running'
+          AND started_at < datetime('now', '-5 minutes')
+    """))
+    db.commit()
+
     sync_next_run_times(db)
 
     tasks = db.execute(text("""
@@ -679,9 +690,23 @@ def add_job_to_scheduler(
         print(f"  ✗ WARNING: Job {job_id} was added but has no next_run_time!")
 
 def cleanup_orphaned_executions():
-    """Remove task executions that no longer have a parent scheduled task"""
+    """Remove task executions that no longer have a parent scheduled task and mark stale running executions as failed"""
     db = SessionLocal()
     try:
+        # First, mark stale running executions as failed
+        stale_result = db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """))
+        stale_count = stale_result.rowcount
+        if stale_count > 0:
+            print(f"✓ Marked {stale_count} stale running execution(s) as failed")
+
+        # Then, delete orphaned executions
         result = db.execute(text("""
             DELETE FROM task_executions
             WHERE task_id NOT IN (SELECT id FROM scheduled_tasks)
@@ -690,7 +715,7 @@ def cleanup_orphaned_executions():
         deleted_count = result.rowcount
         if deleted_count > 0:
             print(f"✓ Cleaned up {deleted_count} orphaned task execution(s)")
-        return deleted_count
+        return deleted_count + stale_count
     except Exception as e:
         print(f"✗ Failed to cleanup orphaned executions: {e}")
         db.rollback()
@@ -744,7 +769,20 @@ def sync_scheduler_with_database(db):
     try:
         print("  → Syncing scheduler with database...")
 
-        # Clean up orphaned executions first
+        # Clean up stale running executions (older than 5 minutes)
+        stale_result = db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """))
+        stale_count = stale_result.rowcount
+        if stale_count > 0:
+            print(f"    ✓ Marked {stale_count} stale running execution(s) as failed")
+
+        # Clean up orphaned executions
         orphaned_exec_count = 0
         result = db.execute(text("""
             DELETE FROM task_executions
@@ -758,7 +796,7 @@ def sync_scheduler_with_database(db):
         # Clean up orphaned scheduler jobs
         orphaned_job_count = cleanup_orphaned_scheduler_jobs(db)
 
-        print(f"  ✓ Sync complete: {orphaned_exec_count} executions, {orphaned_job_count} jobs cleaned")
+        print(f"  ✓ Sync complete: {stale_count} stale, {orphaned_exec_count} orphaned executions, {orphaned_job_count} jobs cleaned")
         return True
     except Exception as e:
         print(f"  ✗ Failed to sync scheduler: {e}")
@@ -829,6 +867,44 @@ async def cleanup_orphaned_executions_endpoint(
             }
         )
     except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "message": str(e)}
+        )
+
+@router.post("/scheduled-tasks/cleanup-stale-running")
+async def cleanup_stale_running_executions_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user or not current_user.is_admin:
+        return JSONResponse(
+            status_code=401,
+            content={"success": False, "message": "Unauthorized"}
+        )
+
+    try:
+        result = db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """))
+        db.commit()
+        updated_count = result.rowcount
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": f"Cleaned up {updated_count} stale running execution(s)",
+                "updated_count": updated_count
+            }
+        )
+    except Exception as e:
+        db.rollback()
         return JSONResponse(
             status_code=500,
             content={"success": False, "message": str(e)}

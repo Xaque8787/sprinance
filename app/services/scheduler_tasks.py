@@ -216,6 +216,18 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
         if not task_exists:
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
+        # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
+        db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE task_id = :task_id
+              AND status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """), {"task_id": task_id})
+        db.commit()
+
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
@@ -442,6 +454,18 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
         if not task_exists:
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
+        # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
+        db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE task_id = :task_id
+              AND status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """), {"task_id": task_id})
+        db.commit()
+
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
@@ -620,6 +644,18 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
         if not task_exists:
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
+        # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
+        db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE task_id = :task_id
+              AND status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """), {"task_id": task_id})
+        db.commit()
+
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
@@ -796,6 +832,18 @@ def run_backup_task(task_id, task_name):
 
         if not task_exists:
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
+
+        # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
+        db.execute(text("""
+            UPDATE task_executions
+            SET status = 'failed',
+                completed_at = CURRENT_TIMESTAMP,
+                error_message = 'Task execution marked as stale (exceeded timeout)'
+            WHERE task_id = :task_id
+              AND status = 'running'
+              AND started_at < datetime('now', '-5 minutes')
+        """), {"task_id": task_id})
+        db.commit()
 
         db.execute(text("""
             INSERT INTO task_executions (task_id, started_at, status)
