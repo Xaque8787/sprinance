@@ -217,7 +217,7 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
         # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
-        db.execute(text("""
+        stale_count = db.execute(text("""
             UPDATE task_executions
             SET status = 'failed',
                 completed_at = CURRENT_TIMESTAMP,
@@ -225,24 +225,41 @@ def run_tip_report_task(task_id, task_name, date_range_type, email_list_json, by
             WHERE task_id = :task_id
               AND status = 'running'
               AND started_at < datetime('now', '-5 minutes')
-        """), {"task_id": task_id})
-        db.commit()
+        """), {"task_id": task_id}).rowcount
+
+        if stale_count > 0:
+            if not commit_with_retry(db):
+                print(f"  ⚠ Warning: Failed to commit stale execution cleanup")
+            else:
+                print(f"  → Cleaned up {stale_count} stale execution(s)")
 
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
-        db.execute(text("""
+        # Insert the execution record and get its ID in one query
+        result = db.execute(text("""
             INSERT INTO task_executions (task_id, started_at, status)
-            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
+            VALUES (:task_id, datetime('now'), 'running')
+            RETURNING id
         """), {"task_id": task_id})
+
+        execution_id = result.scalar()
 
         if not commit_with_retry(db):
             raise Exception("Failed to create task execution record")
 
-        execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
-
         if not execution_id or execution_id == 0:
             raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
+        # Verify the execution record actually exists immediately after creation
+        verify_insert = db.execute(text("""
+            SELECT COUNT(*) FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).scalar()
+
+        if verify_insert == 0:
+            # The record wasn't persisted - this is a critical error
+            total_records = db.execute(text("SELECT COUNT(*) FROM task_executions")).scalar()
+            raise Exception(f"Execution record {execution_id} was not persisted to database. Total records: {total_records}. This may indicate a database write issue.")
 
         print(f"  → Created execution record (ID: {execution_id})")
 
@@ -455,7 +472,7 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
         # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
-        db.execute(text("""
+        stale_count = db.execute(text("""
             UPDATE task_executions
             SET status = 'failed',
                 completed_at = CURRENT_TIMESTAMP,
@@ -463,24 +480,41 @@ def run_daily_balance_report_task(task_id, task_name, date_range_type, email_lis
             WHERE task_id = :task_id
               AND status = 'running'
               AND started_at < datetime('now', '-5 minutes')
-        """), {"task_id": task_id})
-        db.commit()
+        """), {"task_id": task_id}).rowcount
+
+        if stale_count > 0:
+            if not commit_with_retry(db):
+                print(f"  ⚠ Warning: Failed to commit stale execution cleanup")
+            else:
+                print(f"  → Cleaned up {stale_count} stale execution(s)")
 
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
-        db.execute(text("""
+        # Insert the execution record and get its ID in one query
+        result = db.execute(text("""
             INSERT INTO task_executions (task_id, started_at, status)
-            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
+            VALUES (:task_id, datetime('now'), 'running')
+            RETURNING id
         """), {"task_id": task_id})
+
+        execution_id = result.scalar()
 
         if not commit_with_retry(db):
             raise Exception("Failed to create task execution record")
 
-        execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
-
         if not execution_id or execution_id == 0:
             raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
+        # Verify the execution record actually exists immediately after creation
+        verify_insert = db.execute(text("""
+            SELECT COUNT(*) FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).scalar()
+
+        if verify_insert == 0:
+            # The record wasn't persisted - this is a critical error
+            total_records = db.execute(text("SELECT COUNT(*) FROM task_executions")).scalar()
+            raise Exception(f"Execution record {execution_id} was not persisted to database. Total records: {total_records}. This may indicate a database write issue.")
 
         print(f"  → Created execution record (ID: {execution_id})")
 
@@ -645,7 +679,7 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
         # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
-        db.execute(text("""
+        stale_count = db.execute(text("""
             UPDATE task_executions
             SET status = 'failed',
                 completed_at = CURRENT_TIMESTAMP,
@@ -653,24 +687,41 @@ def run_employee_tip_report_task(task_id, task_name, date_range_type, email_list
             WHERE task_id = :task_id
               AND status = 'running'
               AND started_at < datetime('now', '-5 minutes')
-        """), {"task_id": task_id})
-        db.commit()
+        """), {"task_id": task_id}).rowcount
+
+        if stale_count > 0:
+            if not commit_with_retry(db):
+                print(f"  ⚠ Warning: Failed to commit stale execution cleanup")
+            else:
+                print(f"  → Cleaned up {stale_count} stale execution(s)")
 
         start_date, end_date = calculate_date_range(date_range_type)
         print(f"  → Date range: {start_date} to {end_date}")
 
-        db.execute(text("""
+        # Insert the execution record and get its ID in one query
+        result = db.execute(text("""
             INSERT INTO task_executions (task_id, started_at, status)
-            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
+            VALUES (:task_id, datetime('now'), 'running')
+            RETURNING id
         """), {"task_id": task_id})
+
+        execution_id = result.scalar()
 
         if not commit_with_retry(db):
             raise Exception("Failed to create task execution record")
 
-        execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
-
         if not execution_id or execution_id == 0:
             raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
+        # Verify the execution record actually exists immediately after creation
+        verify_insert = db.execute(text("""
+            SELECT COUNT(*) FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).scalar()
+
+        if verify_insert == 0:
+            # The record wasn't persisted - this is a critical error
+            total_records = db.execute(text("SELECT COUNT(*) FROM task_executions")).scalar()
+            raise Exception(f"Execution record {execution_id} was not persisted to database. Total records: {total_records}. This may indicate a database write issue.")
 
         print(f"  → Created execution record (ID: {execution_id})")
 
@@ -834,7 +885,7 @@ def run_backup_task(task_id, task_name):
             raise Exception(f"Task ID {task_id} does not exist in scheduled_tasks table")
 
         # Cleanup any stale "running" executions (older than 5 minutes) before creating new one
-        db.execute(text("""
+        stale_count = db.execute(text("""
             UPDATE task_executions
             SET status = 'failed',
                 completed_at = CURRENT_TIMESTAMP,
@@ -842,21 +893,38 @@ def run_backup_task(task_id, task_name):
             WHERE task_id = :task_id
               AND status = 'running'
               AND started_at < datetime('now', '-5 minutes')
-        """), {"task_id": task_id})
-        db.commit()
+        """), {"task_id": task_id}).rowcount
 
-        db.execute(text("""
+        if stale_count > 0:
+            if not commit_with_retry(db):
+                print(f"  ⚠ Warning: Failed to commit stale execution cleanup")
+            else:
+                print(f"  → Cleaned up {stale_count} stale execution(s)")
+
+        # Insert the execution record and get its ID in one query
+        result = db.execute(text("""
             INSERT INTO task_executions (task_id, started_at, status)
-            VALUES (:task_id, CURRENT_TIMESTAMP, 'running')
+            VALUES (:task_id, datetime('now'), 'running')
+            RETURNING id
         """), {"task_id": task_id})
+
+        execution_id = result.scalar()
 
         if not commit_with_retry(db):
             raise Exception("Failed to create task execution record")
 
-        execution_id = db.execute(text("SELECT last_insert_rowid()")).scalar()
-
         if not execution_id or execution_id == 0:
             raise Exception(f"Failed to get valid execution_id (got: {execution_id}). This may indicate a foreign key constraint issue or missing task_id: {task_id}")
+
+        # Verify the execution record actually exists immediately after creation
+        verify_insert = db.execute(text("""
+            SELECT COUNT(*) FROM task_executions WHERE id = :execution_id
+        """), {"execution_id": execution_id}).scalar()
+
+        if verify_insert == 0:
+            # The record wasn't persisted - this is a critical error
+            total_records = db.execute(text("SELECT COUNT(*) FROM task_executions")).scalar()
+            raise Exception(f"Execution record {execution_id} was not persisted to database. Total records: {total_records}. This may indicate a database write issue.")
 
         print(f"  → Created execution record (ID: {execution_id})")
 
